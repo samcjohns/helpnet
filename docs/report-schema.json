@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/helpnet/helpnet/docs/report-schema.json",
+  "$id": "https://github.com/samcjohns/helpnet/docs/report-schema.json",
   "title": "helpnet report",
   "description": "Output of `helpnet --json` and of `--export report.json` / `/export report.json`. Schema identifier: helpnet.report/v1. Fields may be added in later v1 releases; existing fields keep their meaning.",
   "type": "object",
@@ -25,7 +25,7 @@
     "exit_code": { "enum": [0, 1, 2], "description": "0 all checks passed, 1 warnings, 2 failures." }
   },
   "$defs": {
-    "checkId": { "enum": ["local", "gateway", "internet", "dns", "http", "trace", "speed"] },
+    "checkId": { "enum": ["local", "gateway", "internet", "dns", "http", "trace", "speed", "tailscale"] },
     "status": { "enum": ["pending", "running", "pass", "warn", "fail", "skipped"] },
     "severity": { "enum": ["info", "warn", "fail"] },
     "conclusion": {
@@ -105,7 +105,7 @@
       "properties": {
         "id": { "$ref": "#/$defs/checkId" },
         "title": { "type": "string" },
-        "layer": { "type": "integer", "minimum": 0, "maximum": 6 },
+        "layer": { "type": "integer", "minimum": 0, "maximum": 7 },
         "status": { "$ref": "#/$defs/status" },
         "summary": { "type": "string" },
         "state": { "$ref": "#/$defs/state" },
@@ -370,6 +370,51 @@
             "ping_ms": { "type": "number" },
             "jitter_ms": { "type": "number" },
             "raw": { "type": "string" }
+          }
+        },
+        "tailscale": {
+          "type": "object",
+          "description": "Tailscale's own view, from `tailscale status --json` and `tailscale netcheck`. Present only when the Tailscale CLI is installed and tailscaled is running. Holds counts only: no peer names, tailnet name or public addresses.",
+          "required": ["status"],
+          "properties": {
+            "status": {
+              "type": "object",
+              "required": ["backend_state", "magic_dns", "exit_node", "peers", "online", "active", "direct", "relayed", "peer_relayed"],
+              "properties": {
+                "backend_state": { "type": "string", "examples": ["Running", "Stopped", "NeedsLogin"] },
+                "version": { "type": "string" },
+                "home_relay": { "type": "string", "description": "This device's home DERP region code, e.g. nyc." },
+                "magic_dns": { "type": "boolean" },
+                "exit_node": { "type": "boolean", "description": "Traffic goes through an exit node." },
+                "health": { "type": "array", "items": { "type": "string" } },
+                "peers": { "type": "integer", "minimum": 0 },
+                "online": { "type": "integer", "minimum": 0 },
+                "active": { "type": "integer", "minimum": 0, "description": "Peers with recent traffic; only these have a connection path to judge." },
+                "direct": { "type": "integer", "minimum": 0 },
+                "relayed": { "type": "integer", "minimum": 0, "description": "Active peers relayed through DERP." },
+                "peer_relayed": { "type": "integer", "minimum": 0, "description": "Active peers relayed through a Tailscale peer relay." },
+                "relay_regions": { "type": "array", "items": { "type": "string" } }
+              },
+              "additionalProperties": false
+            },
+            "netcheck": {
+              "type": "object",
+              "required": ["udp", "ipv4", "ipv6"],
+              "properties": {
+                "udp": { "type": "boolean" },
+                "ipv4": { "type": "boolean" },
+                "ipv6": { "type": "boolean" },
+                "hard_nat": { "type": "boolean", "description": "The NAT maps each destination to a different public port (MappingVariesByDestIP). Absent when unknown." },
+                "hairpinning": { "type": "boolean" },
+                "upnp": { "type": "boolean" },
+                "nat_pmp": { "type": "boolean" },
+                "pcp": { "type": "boolean" },
+                "captive_portal": { "type": "boolean" },
+                "preferred_derp": { "type": "integer" },
+                "derp_latency_ms": { "type": "number" }
+              },
+              "additionalProperties": false
+            }
           }
         }
       }

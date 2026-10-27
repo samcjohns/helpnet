@@ -9,7 +9,7 @@ import (
 
 	"github.com/miekg/dns"
 
-	"github.com/helpnet/helpnet/internal/probe"
+	"github.com/samcjohns/helpnet/internal/probe"
 )
 
 // Layer 3 — DNS comparison between the system resolver and public ones.

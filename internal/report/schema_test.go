@@ -9,12 +9,12 @@ import (
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
-	"github.com/helpnet/helpnet/internal/checks"
-	"github.com/helpnet/helpnet/internal/config"
-	"github.com/helpnet/helpnet/internal/fixtures"
-	"github.com/helpnet/helpnet/internal/interpret"
-	"github.com/helpnet/helpnet/internal/probe"
-	"github.com/helpnet/helpnet/internal/sysinfo"
+	"github.com/samcjohns/helpnet/internal/checks"
+	"github.com/samcjohns/helpnet/internal/config"
+	"github.com/samcjohns/helpnet/internal/fixtures"
+	"github.com/samcjohns/helpnet/internal/interpret"
+	"github.com/samcjohns/helpnet/internal/probe"
+	"github.com/samcjohns/helpnet/internal/sysinfo"
 )
 
 func compileSchema(t *testing.T) *jsonschema.Schema {

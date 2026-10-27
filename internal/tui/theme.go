@@ -6,7 +6,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
 
-	"github.com/helpnet/helpnet/internal/interpret"
+	"github.com/samcjohns/helpnet/internal/interpret"
 )
 
 // theme holds the palette and styles. Colours adapt to light and dark

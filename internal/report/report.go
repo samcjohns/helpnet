@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/helpnet/helpnet/internal/checks"
-	"github.com/helpnet/helpnet/internal/config"
-	"github.com/helpnet/helpnet/internal/interpret"
+	"github.com/samcjohns/helpnet/internal/checks"
+	"github.com/samcjohns/helpnet/internal/config"
+	"github.com/samcjohns/helpnet/internal/interpret"
 )
 
 // SchemaVersion identifies the JSON report format (documented in docs/report-schema.json).

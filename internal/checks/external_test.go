@@ -5,11 +5,12 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 
-	"github.com/helpnet/helpnet/internal/config"
-	"github.com/helpnet/helpnet/internal/sysinfo"
+	"github.com/samcjohns/helpnet/internal/config"
+	"github.com/samcjohns/helpnet/internal/sysinfo"
 )
 
 // fakeTools puts shell-script stand-ins for external tools first on PATH.
@@ -52,6 +53,9 @@ func runOnly(t *testing.T, ids ...ID) *Results {
 
 func TestMissingToolsAreSkippedWithHints(t *testing.T) {
 	fakeTools(t, nil)
+	if p := WithInstalled(Plan(false, false)); slices.Contains(p, Tailscale) {
+		t.Errorf("Tailscale should not be planned without its CLI: %v", p)
+	}
 	r := runOnly(t, Trace, Speed)
 	for _, id := range []ID{Trace, Speed} {
 		st := r.States[id]
@@ -123,5 +127,57 @@ func TestPlan(t *testing.T) {
 	}
 	if (Options{Target: "https://example.com:8443/path"}).TargetHost() != "example.com" {
 		t.Error("TargetHost")
+	}
+}
+
+func TestTailscaleCheckReadsStatusAndNetcheck(t *testing.T) {
+	fakeTools(t, map[string]string{
+		"tailscale": `case "$1" in
+status) cat <<'JSON'
+` + fixture(t, "tailscale_status.json") + `
+JSON
+;;
+netcheck) echo 'portmap: UPnP discovery response' >&2; cat <<'JSON'
+` + fixture(t, "tailscale_netcheck.json") + `
+JSON
+;;
+esac
+`,
+	})
+	if p := WithInstalled(Plan(true, false)); p[len(p)-1] != Tailscale {
+		t.Errorf("Tailscale should be planned when installed: %v", p)
+	}
+	r := runOnly(t, Tailscale)
+	ts := r.Tailscale
+	if r.States[Tailscale].Outcome != OutcomeOK || ts == nil || ts.Status.Active != 3 || ts.Netcheck == nil || !ts.Netcheck.UDP {
+		t.Fatalf("tailscale: %+v %+v", r.States[Tailscale], ts)
+	}
+}
+
+func TestTailscaleNotRunningIsSkipped(t *testing.T) {
+	fakeTools(t, map[string]string{
+		"tailscale": "echo 'failed to connect to local tailscaled; it doesn'\\''t appear to be running' >&2; exit 1\n",
+	})
+	r := runOnly(t, Tailscale)
+	if st := r.States[Tailscale]; st.Outcome != OutcomeSkipped || !strings.Contains(st.SkipReason, "not running") {
+		t.Errorf("tailscale: %+v", st)
+	}
+}
+
+func TestTailscaleNetcheckFailureKeepsStatus(t *testing.T) {
+	fakeTools(t, map[string]string{
+		"tailscale": `if [ "$1" = status ]; then cat <<'JSON'
+` + fixture(t, "tailscale_status_stopped.json") + `
+JSON
+else echo 'netcheck: no DERP map' >&2; exit 1; fi
+`,
+	})
+	r := runOnly(t, Tailscale)
+	st := r.States[Tailscale]
+	if st.Outcome != OutcomeOK || r.Tailscale == nil || r.Tailscale.Netcheck != nil {
+		t.Fatalf("tailscale: %+v %+v", st, r.Tailscale)
+	}
+	if len(st.Notes) == 0 || !strings.Contains(st.Notes[0], "no DERP map") {
+		t.Errorf("netcheck failure should be noted: %v", st.Notes)
 	}
 }

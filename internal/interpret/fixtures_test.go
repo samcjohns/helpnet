@@ -1,8 +1,8 @@
 package interpret
 
 import (
-	"github.com/helpnet/helpnet/internal/config"
-	"github.com/helpnet/helpnet/internal/fixtures"
+	"github.com/samcjohns/helpnet/internal/config"
+	"github.com/samcjohns/helpnet/internal/fixtures"
 )
 
 var th = config.DefaultThresholds()

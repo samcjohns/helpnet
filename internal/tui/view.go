@@ -8,9 +8,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/helpnet/helpnet/internal/checks"
-	"github.com/helpnet/helpnet/internal/interpret"
-	"github.com/helpnet/helpnet/internal/report"
+	"github.com/samcjohns/helpnet/internal/checks"
+	"github.com/samcjohns/helpnet/internal/interpret"
+	"github.com/samcjohns/helpnet/internal/report"
 )
 
 const (

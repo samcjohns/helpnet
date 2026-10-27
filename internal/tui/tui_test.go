@@ -12,11 +12,12 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/helpnet/helpnet/internal/checks"
-	"github.com/helpnet/helpnet/internal/config"
-	"github.com/helpnet/helpnet/internal/fixtures"
-	"github.com/helpnet/helpnet/internal/interpret"
-	"github.com/helpnet/helpnet/internal/session"
+	"github.com/samcjohns/helpnet/internal/checks"
+	"github.com/samcjohns/helpnet/internal/config"
+	"github.com/samcjohns/helpnet/internal/fixtures"
+	"github.com/samcjohns/helpnet/internal/interpret"
+	"github.com/samcjohns/helpnet/internal/probe"
+	"github.com/samcjohns/helpnet/internal/session"
 )
 
 const termW, termH = 100, 40
@@ -60,11 +61,19 @@ func baseParams() session.Params {
 // touching the network, by feeding it the updates a real run would send.
 func fixtureModel(t *testing.T, r *checks.Results) *model {
 	t.Helper()
+	return fixtureModelPlan(t, r, checks.Plan(false, false))
+}
+
+// fixtureModelPlan is fixtureModel with a given plan (e.g. with Tailscale).
+func fixtureModelPlan(t *testing.T, r *checks.Results, plan []checks.ID) *model {
+	t.Helper()
 	os.Setenv("NO_COLOR", "1") // stable output
 	t.Cleanup(func() { os.Unsetenv("NO_COLOR") })
-	m := newModel(Options{Params: baseParams(), Version: "0.1.0"})
+	p := baseParams()
+	p.Plan = plan
+	m := newModel(Options{Params: p, Version: "0.1.0"})
 	m.Update(tea.WindowSizeMsg{Width: termW, Height: termH})
-	m.runID, m.active, m.runPlan, m.runStart = 1, true, checks.Plan(false, false), time.Now()
+	m.runID, m.active, m.runPlan, m.runStart = 1, true, plan, time.Now()
 	th := config.DefaultThresholds()
 	snap := checks.NewResults()
 	for _, id := range m.runPlan {
@@ -94,6 +103,8 @@ func resultFor(r *checks.Results, id checks.ID) any {
 		return r.HTTP
 	case checks.Trace:
 		return r.Trace
+	case checks.Tailscale:
+		return r.Tailscale
 	}
 	return r.Speed
 }
@@ -206,10 +217,16 @@ func TestEnterOnRequiredArgCompletesInsteadOfRunning(t *testing.T) {
 func TestCommandsWithoutNetwork(t *testing.T) {
 	m := fixtureModel(t, fixtures.Healthy())
 	m.Update(key("/"))
-	typeText(m, "details")
+	typeText(m, "verbose")
 	m.Update(key("enter"))
 	if !m.showRaw {
-		t.Error("/details should toggle raw output")
+		t.Error("/verbose should toggle raw output")
+	}
+	m.Update(key("/"))
+	typeText(m, "details")
+	m.Update(key("enter"))
+	if m.showRaw {
+		t.Error("/details should remain an alias of /verbose")
 	}
 	m.Update(key("/"))
 	typeText(m, "bogus")
@@ -319,4 +336,47 @@ func TestLiveDemo(t *testing.T) {
 			t.Fatal("live run did not finish")
 		}
 	}
+}
+
+func TestWindowTitle(t *testing.T) {
+	m := newModel(Options{Params: baseParams()})
+	m.active, m.running = true, map[checks.ID]bool{checks.DNS: true, checks.HTTP: true}
+	if got := m.windowTitle(); got != "helpnet · DNS…" {
+		t.Errorf("running title = %q", got)
+	}
+	if m.titleCmd() == nil || m.titleCmd() != nil {
+		t.Error("titleCmd should fire once per change")
+	}
+
+	if got := fixtureModel(t, fixtures.Healthy()).windowTitle(); got != "✓ helpnet · 100/100" {
+		t.Errorf("healthy title = %q", got)
+	}
+	r := fixtures.Healthy()
+	r.DNS.Resolvers[0] = fixtures.Resolver("192.168.1.1", true, 412)
+	if got := fixtureModel(t, r).windowTitle(); !strings.HasPrefix(got, "✗ helpnet · DNS · ") {
+		t.Errorf("DNS failure title = %q", got)
+	}
+}
+
+func TestTailscaleRowOnlyWhenPlanned(t *testing.T) {
+	m := fixtureModel(t, fixtures.Healthy())
+	if v := ansi.Strip(m.View()); strings.Contains(v, "Tailscale") {
+		t.Errorf("Tailscale row shown although it isn't installed/planned:\n%s", v)
+	}
+
+	r := fixtures.Healthy()
+	easy := false
+	r.Tailscale = &probe.TailscaleResult{
+		Status:   probe.TailscaleStatus{BackendState: "Running", HomeRelay: "nyc", Peers: 4, Active: 2, Direct: 2},
+		Netcheck: &probe.TailscaleNetcheck{UDP: true, IPv4: true, HardNAT: &easy, DERPLatencyMs: 12},
+	}
+	r.States[checks.Tailscale] = fixtures.OK()
+	m = fixtureModelPlan(t, r, append(checks.Plan(false, false), checks.Tailscale))
+	m.follow = false
+	m.vp.GotoTop()
+	v := m.View()
+	if !strings.Contains(ansi.Strip(v), "2/2 active peers direct · easy NAT · DERP nyc 12 ms") {
+		t.Errorf("Tailscale row missing:\n%s", ansi.Strip(v))
+	}
+	assertFits(t, v)
 }

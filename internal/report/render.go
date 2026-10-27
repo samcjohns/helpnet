@@ -10,7 +10,7 @@ import (
 
 	"github.com/mattn/go-runewidth"
 
-	"github.com/helpnet/helpnet/internal/interpret"
+	"github.com/samcjohns/helpnet/internal/interpret"
 )
 
 // Icon returns the status glyph used everywhere.

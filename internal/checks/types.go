@@ -4,8 +4,8 @@
 package checks
 
 import (
-	"github.com/helpnet/helpnet/internal/probe"
-	"github.com/helpnet/helpnet/internal/sysinfo"
+	"github.com/samcjohns/helpnet/internal/probe"
+	"github.com/samcjohns/helpnet/internal/sysinfo"
 )
 
 // ID names a check. Checks run in Order, nearest to farthest.
@@ -19,11 +19,14 @@ const (
 	HTTP     ID = "http"
 	Trace    ID = "trace"
 	Speed    ID = "speed"
+	// Tailscale is optional and only planned when its CLI is installed
+	// (see WithInstalled). It comes last so the spec's layer numbers stay.
+	Tailscale ID = "tailscale"
 )
 
-var Order = []ID{Local, Gateway, Internet, DNS, HTTP, Trace, Speed}
+var Order = []ID{Local, Gateway, Internet, DNS, HTTP, Trace, Speed, Tailscale}
 
-// Layer returns the layer number from the spec (0 = local … 6 = bandwidth).
+// Layer returns the layer number (0 = local … 6 = bandwidth, 7 = Tailscale).
 func (id ID) Layer() int {
 	for i, v := range Order {
 		if v == id {
@@ -49,6 +52,8 @@ func (id ID) Title() string {
 		return "Route trace"
 	case Speed:
 		return "Bandwidth"
+	case Tailscale:
+		return "Tailscale"
 	}
 	return string(id)
 }
@@ -204,14 +209,15 @@ type HTTPResult struct {
 // Results is everything measured in a run. Each field is nil until its
 // check finishes; finished results are never mutated, so they can be shared.
 type Results struct {
-	Local    *sysinfo.Info      `json:"local,omitempty"`
-	Gateway  *GatewayResult     `json:"gateway,omitempty"`
-	Internet *InternetResult    `json:"internet,omitempty"`
-	DNS      *DNSResult         `json:"dns,omitempty"`
-	HTTP     *HTTPResult        `json:"http,omitempty"`
-	Trace    *probe.TraceResult `json:"trace,omitempty"`
-	Speed    *probe.SpeedResult `json:"speed,omitempty"`
-	States   map[ID]State       `json:"states"`
+	Local     *sysinfo.Info          `json:"local,omitempty"`
+	Gateway   *GatewayResult         `json:"gateway,omitempty"`
+	Internet  *InternetResult        `json:"internet,omitempty"`
+	DNS       *DNSResult             `json:"dns,omitempty"`
+	HTTP      *HTTPResult            `json:"http,omitempty"`
+	Trace     *probe.TraceResult     `json:"trace,omitempty"`
+	Speed     *probe.SpeedResult     `json:"speed,omitempty"`
+	Tailscale *probe.TailscaleResult `json:"tailscale,omitempty"`
+	States    map[ID]State           `json:"states"`
 }
 
 func NewResults() *Results { return &Results{States: map[ID]State{}} }
@@ -247,6 +253,8 @@ func (r *Results) set(id ID, v any) {
 		r.Trace, _ = v.(*probe.TraceResult)
 	case Speed:
 		r.Speed, _ = v.(*probe.SpeedResult)
+	case Tailscale:
+		r.Tailscale, _ = v.(*probe.TailscaleResult)
 	}
 }
 

@@ -2,9 +2,9 @@
 package fixtures
 
 import (
-	"github.com/helpnet/helpnet/internal/checks"
-	"github.com/helpnet/helpnet/internal/probe"
-	"github.com/helpnet/helpnet/internal/sysinfo"
+	"github.com/samcjohns/helpnet/internal/checks"
+	"github.com/samcjohns/helpnet/internal/probe"
+	"github.com/samcjohns/helpnet/internal/sysinfo"
 )
 
 func Ping(host string, sent int, rtts ...float64) probe.PingResult {

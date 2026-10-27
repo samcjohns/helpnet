@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/helpnet/helpnet/internal/probe"
+	"github.com/samcjohns/helpnet/internal/probe"
 )
 
 func detect(ctx context.Context) (Info, error) {

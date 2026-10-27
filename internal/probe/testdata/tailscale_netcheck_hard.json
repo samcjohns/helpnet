@@ -1,0 +1,12 @@
+{
+  "UDP": true,
+  "IPv6": false,
+  "IPv4": true,
+  "MappingVariesByDestIP": "true",
+  "UPnP": null,
+  "PMP": "",
+  "PCP": false,
+  "PreferredDERP": 2,
+  "RegionLatency": {"2": 18500000},
+  "GlobalV4": "198.51.100.20:61001"
+}

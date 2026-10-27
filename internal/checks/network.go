@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/helpnet/helpnet/internal/probe"
-	"github.com/helpnet/helpnet/internal/sysinfo"
+	"github.com/samcjohns/helpnet/internal/probe"
+	"github.com/samcjohns/helpnet/internal/sysinfo"
 )
 
 // Layer 0 — local interface.

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/helpnet/helpnet/internal/checks"
-	"github.com/helpnet/helpnet/internal/interpret"
-	"github.com/helpnet/helpnet/internal/probe"
+	"github.com/samcjohns/helpnet/internal/checks"
+	"github.com/samcjohns/helpnet/internal/interpret"
+	"github.com/samcjohns/helpnet/internal/probe"
 )
 
 // Line is the one-line result shown next to a finished check.
@@ -101,8 +101,89 @@ func Line(id checks.ID, r *checks.Results) string {
 	case checks.Speed:
 		s := r.Speed
 		return fmt.Sprintf("↓ %.0f Mbps · ↑ %.0f Mbps · ping %s", s.DownloadMbps, s.UploadMbps, fmtMs(s.PingMs))
+	case checks.Tailscale:
+		return tailscaleLine(r.Tailscale)
 	}
 	return ""
+}
+
+func tailscaleLine(t *probe.TailscaleResult) string {
+	s, n := t.Status, t.Netcheck
+	if !s.Running() {
+		return strings.ToLower(orDash(s.BackendState))
+	}
+	var parts []string
+	switch {
+	case s.Active == 0:
+		parts = append(parts, "no active peers")
+	case s.Relayed == 0:
+		parts = append(parts, fmt.Sprintf("%d/%d active peers direct", s.Direct, s.Active))
+	default:
+		parts = append(parts, fmt.Sprintf("%d/%d active peers relayed", s.Relayed, s.Active))
+	}
+	if n != nil {
+		switch {
+		case !n.UDP:
+			parts = append(parts, "UDP blocked")
+		case n.HardNAT != nil && *n.HardNAT:
+			parts = append(parts, "hard NAT")
+		case n.HardNAT != nil:
+			parts = append(parts, "easy NAT")
+		}
+	}
+	if s.HomeRelay != "" {
+		relay := "DERP " + s.HomeRelay
+		if n != nil && n.DERPLatencyMs > 0 {
+			relay += " " + fmtMs(n.DERPLatencyMs)
+		}
+		parts = append(parts, relay)
+	}
+	return strings.Join(parts, " · ")
+}
+
+func tailscaleDetails(t *probe.TailscaleResult) []string {
+	s, n := t.Status, t.Netcheck
+	d := []string{fmt.Sprintf("tailscale %s · state %s · MagicDNS %s · exit node %s", orDash(s.Version), orDash(s.BackendState), onOff(s.MagicDNS), yesNo(s.ExitNode))}
+	d = append(d, fmt.Sprintf("peers: %d total · %d online · %d active (%d direct, %d via DERP, %d via peer relay)",
+		s.Peers, s.Online, s.Active, s.Direct, s.Relayed, s.PeerRelayed))
+	if len(s.RelayRegions) > 0 {
+		d = append(d, "DERP regions carrying relayed peers: "+strings.Join(s.RelayRegions, ", "))
+	}
+	if n != nil {
+		d = append(d, fmt.Sprintf("netcheck: UDP %s · IPv4 %s · IPv6 %s · NAT mapping varies by destination %s · hairpinning %s",
+			yesNo(n.UDP), yesNo(n.IPv4), yesNo(n.IPv6), optYesNo(n.HardNAT), optYesNo(n.HairPinning)))
+		d = append(d, fmt.Sprintf("port mapping: UPnP %s · NAT-PMP %s · PCP %s", optYesNo(n.UPnP), optYesNo(n.PMP), optYesNo(n.PCP)))
+		relay := fmt.Sprintf("home DERP %s", orDash(s.HomeRelay))
+		if n.DERPLatencyMs > 0 {
+			relay += " · " + fmtMs(n.DERPLatencyMs)
+		}
+		d = append(d, relay)
+	}
+	for _, h := range s.Health {
+		d = append(d, "health: "+h)
+	}
+	return d
+}
+
+func yesNo(b bool) string {
+	if b {
+		return "yes"
+	}
+	return "no"
+}
+
+func onOff(b bool) string {
+	if b {
+		return "on"
+	}
+	return "off"
+}
+
+func optYesNo(b *bool) string {
+	if b == nil {
+		return "unknown"
+	}
+	return yesNo(*b)
 }
 
 // Details are the expanded per-check lines (per-sample timings etc.).
@@ -221,6 +302,10 @@ func Details(id checks.ID, r *checks.Results) []string {
 		if s := r.Speed; s != nil {
 			d = append(d, fmt.Sprintf("server %s · download %.1f Mbps · upload %.1f Mbps · ping %s · jitter %s",
 				orDash(s.Server), s.DownloadMbps, s.UploadMbps, fmtMs(s.PingMs), fmtMs(s.JitterMs)))
+		}
+	case checks.Tailscale:
+		if t := r.Tailscale; t != nil {
+			d = append(d, tailscaleDetails(t)...)
 		}
 	}
 	if st.Hint != "" {
@@ -370,6 +455,9 @@ func Statistics(r *checks.Results, fs []interpret.Finding) []StatRow {
 	}
 	if s := r.Speed; s != nil && r.Ran(checks.Speed) {
 		rows = append(rows, StatRow{Layer: "Bandwidth", Target: s.Tool, Wide: fmt.Sprintf("↓ %.0f Mbps  ↑ %.0f Mbps", s.DownloadMbps, s.UploadMbps), Status: status(checks.Speed)})
+	}
+	if t := r.Tailscale; t != nil && r.Ran(checks.Tailscale) {
+		rows = append(rows, StatRow{Layer: "Tailscale", Target: "tailnet", Wide: tailscaleLine(t), Status: status(checks.Tailscale)})
 	}
 	return rows
 }

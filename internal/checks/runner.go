@@ -6,11 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
-	"github.com/helpnet/helpnet/internal/config"
-	"github.com/helpnet/helpnet/internal/sysinfo"
+	"github.com/samcjohns/helpnet/internal/config"
+	"github.com/samcjohns/helpnet/internal/probe"
+	"github.com/samcjohns/helpnet/internal/sysinfo"
 )
 
 // Options configures a run.
@@ -64,6 +66,16 @@ func Plan(quick, speed bool) []ID {
 	return ids
 }
 
+// WithInstalled adds the optional checks whose tool is installed to plan.
+// Today that is Tailscale: it is irrelevant to anyone who doesn't use it,
+// so it is left out rather than shown as skipped.
+func WithInstalled(plan []ID) []ID {
+	if probe.TailscaleInstalled() && !slices.Contains(plan, Tailscale) {
+		plan = append(slices.Clone(plan), Tailscale)
+	}
+	return plan
+}
+
 // Check is one diagnostic step. Run returns the typed result (or an error
 // meaning nothing useful could be measured); progress goes through rc.
 type Check interface {
@@ -96,13 +108,14 @@ type SkipError struct{ Reason, Hint string }
 func (e *SkipError) Error() string { return e.Reason }
 
 var registry = map[ID]Check{
-	Local:    localCheck{},
-	Gateway:  gatewayCheck{},
-	Internet: internetCheck{},
-	DNS:      dnsCheck{},
-	HTTP:     httpCheck{},
-	Trace:    traceCheck{},
-	Speed:    speedCheck{},
+	Local:     localCheck{},
+	Gateway:   gatewayCheck{},
+	Internet:  internetCheck{},
+	DNS:       dnsCheck{},
+	HTTP:      httpCheck{},
+	Trace:     traceCheck{},
+	Speed:     speedCheck{},
+	Tailscale: tailscaleCheck{},
 }
 
 // Run executes plan in layer order on top of prev (which may be nil) and

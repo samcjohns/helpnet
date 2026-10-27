@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/helpnet/helpnet/internal/checks"
-	"github.com/helpnet/helpnet/internal/config"
+	"github.com/samcjohns/helpnet/internal/checks"
+	"github.com/samcjohns/helpnet/internal/config"
 )
 
 // Rating weights. The overall score is the weighted mean of the layers that
@@ -18,9 +18,10 @@ import (
 //	HTTP      25  what a page load actually experiences
 //	Bandwidth 10  only when tested; matters for large pages and media
 //
-// The local interface and route trace are not scored: the first is a
-// prerequisite (no network = "Down"), and the second explains problems the
-// other layers already measure.
+// The local interface, route trace and Tailscale are not scored: the first
+// is a prerequisite (no network = "Down"), the second explains problems the
+// other layers already measure, and Tailscale is about peer-to-peer paths,
+// not page loads.
 var layerWeights = map[checks.ID]float64{
 	checks.Gateway:  20,
 	checks.Internet: 25,

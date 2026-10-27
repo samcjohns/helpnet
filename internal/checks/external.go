@@ -2,8 +2,10 @@ package checks
 
 import (
 	"context"
+	"errors"
+	"time"
 
-	"github.com/helpnet/helpnet/internal/probe"
+	"github.com/samcjohns/helpnet/internal/probe"
 )
 
 // Layer 5 — route trace via Trippy or the OS traceroute.
@@ -48,4 +50,38 @@ func (speedCheck) Run(ctx context.Context, rc *RunContext) (any, error) {
 		return nil, err
 	}
 	return &s, nil
+}
+
+// Layer 7 — Tailscale's own view via its CLI: peer connection paths from
+// `tailscale status` and NAT/UDP facts from `tailscale netcheck`.
+type tailscaleCheck struct{}
+
+func (tailscaleCheck) ID() ID { return Tailscale }
+
+// tailscaleTimeout bounds netcheck, which probes Tailscale's relay servers.
+const tailscaleTimeout = 15 * time.Second
+
+func (tailscaleCheck) Run(ctx context.Context, rc *RunContext) (any, error) {
+	if !probe.TailscaleInstalled() {
+		return nil, &SkipError{Reason: "Tailscale not installed"}
+	}
+	ctx, cancel := context.WithTimeout(ctx, tailscaleTimeout)
+	defer cancel()
+	rc.Progress("reading tailscale status…")
+	st, err := probe.TailscaleStatusOf(ctx)
+	if errors.Is(err, probe.ErrTailscaleNotRunning) {
+		return nil, &SkipError{Reason: "Tailscale is installed but tailscaled is not running"}
+	}
+	if err != nil {
+		return nil, err
+	}
+	res := &probe.TailscaleResult{Status: st}
+	rc.Progress("running tailscale netcheck…")
+	nc, err := probe.TailscaleNetcheckOf(ctx)
+	if err != nil {
+		rc.Note("tailscale netcheck failed: %v", err)
+		return res, nil
+	}
+	res.Netcheck = &nc
+	return res, nil
 }

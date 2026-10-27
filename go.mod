@@ -1,4 +1,4 @@
-module github.com/helpnet/helpnet
+module github.com/samcjohns/helpnet
 
 go 1.27.3
 

@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/helpnet/helpnet/internal/checks"
-	"github.com/helpnet/helpnet/internal/probe"
-	"github.com/helpnet/helpnet/internal/sysinfo"
+	"github.com/samcjohns/helpnet/internal/checks"
+	"github.com/samcjohns/helpnet/internal/probe"
+	"github.com/samcjohns/helpnet/internal/sysinfo"
 )
 
 // expect runs Analyze and checks the primary diagnosis rule and severity.
@@ -412,6 +412,158 @@ func TestTraceRules(t *testing.T) {
 		ta := AnalyzeTrace(hops)
 		if ta.LossHop != 0 || ta.FinalReached {
 			t.Errorf("unreached destination can't prove persistence: %+v", ta)
+		}
+	})
+}
+
+func TestCGNAT(t *testing.T) {
+	t.Run("hop in shared address space before any public hop", func(t *testing.T) {
+		r := healthy()
+		r.Trace.Hops = []probe.TraceHop{hop(1, "192.168.1.1", 3, 0), hop(2, "100.72.0.1", 9, 0), hop(3, "203.0.113.1", 15, 0), hop(4, "198.51.100.14", 18, 0)}
+		fs := expect(t, r, RuleHealthy, Info)
+		f := find(fs, RuleCGNAT)
+		if f == nil || f.Layer != checks.Trace || f.Confidence != High || !strings.Contains(f.Evidence, "100.72.0.1") {
+			t.Fatalf("expected CGNAT from hop 2: %+v", f)
+		}
+		if find(fs, RuleDoubleNAT) != nil {
+			t.Error("CGNAT should not also be reported as double NAT")
+		}
+	})
+	t.Run("shared address after a public hop is not CGNAT", func(t *testing.T) {
+		r := healthy()
+		r.Trace.Hops = []probe.TraceHop{hop(1, "192.168.1.1", 3, 0), hop(2, "203.0.113.1", 9, 0), hop(3, "100.100.5.5", 15, 0), hop(4, "198.51.100.14", 18, 0)}
+		if f := find(Analyze(r, th), RuleCGNAT); f != nil {
+			t.Errorf("transit networks may use 100.64/10 internally: %+v", f)
+		}
+	})
+	t.Run("trace through a VPN says nothing about the local NAT", func(t *testing.T) {
+		r := healthy()
+		r.Local.VPN = sysinfo.VPNInfo{Active: true, DefaultRoute: true, Interfaces: []string{"tailscale0"}}
+		r.Trace.Hops = []probe.TraceHop{hop(1, "100.101.102.103", 20, 0), hop(2, "100.72.0.1", 25, 0), hop(3, "198.51.100.14", 30, 0)}
+		if f := find(Analyze(r, th), RuleCGNAT); f != nil {
+			t.Errorf("exit node hops are tailnet addresses, not CGNAT: %+v", f)
+		}
+	})
+	t.Run("device address in shared space", func(t *testing.T) {
+		r := healthy()
+		r.Local.IPv4, r.Local.Gateway = []string{"100.80.3.4"}, "100.80.0.1"
+		r.Local.VPN.Interfaces = []string{"tailscale0"}
+		fs := Analyze(r, th)
+		f := find(fs, RuleCGNAT)
+		if f == nil || f.Layer != checks.Local || !strings.Contains(f.Evidence, "100.80.3.4") || !strings.Contains(f.Evidence, "Tailscale") {
+			t.Fatalf("expected local CGNAT mentioning the Tailscale clash: %+v", f)
+		}
+		n := 0
+		for _, f := range fs {
+			if f.Rule == RuleCGNAT {
+				n++
+			}
+		}
+		if n != 1 {
+			t.Errorf("CGNAT reported %d times:\n%s", n, dump(fs))
+		}
+	})
+	t.Run("netcheck says the NAT is easy", func(t *testing.T) {
+		r := healthy()
+		r.Trace.Hops = []probe.TraceHop{hop(1, "192.168.1.1", 3, 0), hop(2, "100.72.0.1", 9, 0), hop(3, "198.51.100.14", 18, 0)}
+		withTailscale(r, 2, 2, 0, &probe.TailscaleNetcheck{UDP: true, IPv4: true, HardNAT: boolp(false)})
+		f := find(Analyze(r, th), RuleCGNAT)
+		if f == nil || !strings.Contains(f.Evidence, "direct Tailscale connections should still work") {
+			t.Fatalf("CGNAT finding should relay netcheck's verdict: %+v", f)
+		}
+	})
+}
+
+func TestDoubleNAT(t *testing.T) {
+	r := healthy()
+	r.Trace.Hops = []probe.TraceHop{hop(1, "192.168.1.1", 3, 0), hop(2, "192.168.0.1", 4, 0), hop(3, "203.0.113.1", 12, 0), hop(4, "198.51.100.14", 18, 0)}
+	fs := expect(t, r, RuleHealthy, Info)
+	if f := find(fs, RuleDoubleNAT); f == nil || f.Severity != Info || f.Confidence != Low || !strings.Contains(f.Evidence, "192.168.0.1") {
+		t.Fatalf("expected possible double NAT at hop 2: %+v", f)
+	}
+	// The healthy fixture's private hop 2 is 6 ms past the router: the
+	// ISP's own router, not a second one at home.
+	if f := find(Analyze(healthy(), th), RuleDoubleNAT); f != nil {
+		t.Errorf("distant private hop is not double NAT: %+v", f)
+	}
+}
+
+func boolp(b bool) *bool { return &b }
+
+// withTailscale adds a running Tailscale result with active peers split
+// into direct and DERP-relayed.
+func withTailscale(r *checks.Results, active, direct, relayed int, n *probe.TailscaleNetcheck) {
+	s := probe.TailscaleStatus{BackendState: "Running", HomeRelay: "nyc", Peers: active + 2, Online: active + 1, Active: active, Direct: direct, Relayed: relayed}
+	if relayed > 0 {
+		s.RelayRegions = []string{"iad"}
+	}
+	r.Tailscale = &probe.TailscaleResult{Status: s, Netcheck: n}
+	r.States[checks.Tailscale] = okState()
+}
+
+func TestTailscaleRules(t *testing.T) {
+	t.Run("all direct", func(t *testing.T) {
+		r := healthy()
+		withTailscale(r, 3, 3, 0, &probe.TailscaleNetcheck{UDP: true, IPv4: true, HardNAT: boolp(false)})
+		fs := expect(t, r, RuleHealthy, Info)
+		if f := find(fs, RuleTailscaleDirect); f == nil || !strings.Contains(f.Evidence, "3 of 3") {
+			t.Errorf("expected direct-connection info: %+v", f)
+		}
+	})
+	t.Run("UDP blocked", func(t *testing.T) {
+		r := healthy()
+		withTailscale(r, 2, 0, 2, &probe.TailscaleNetcheck{IPv4: true, DERPLatencyMs: 22})
+		fs := expect(t, r, RuleTailscaleNoUDP, Warn)
+		f := find(fs, RuleTailscaleNoUDP)
+		if !strings.Contains(f.Evidence, "home relay nyc, 22 ms away") || !strings.Contains(f.Evidence, "2 of 2 active peers") {
+			t.Errorf("evidence %q", f.Evidence)
+		}
+		if find(fs, RuleTailscaleRelayed) != nil {
+			t.Error("relayed peers are explained by the UDP finding")
+		}
+	})
+	t.Run("hard NAT behind CGNAT with relayed peers", func(t *testing.T) {
+		r := healthy()
+		r.Trace.Hops = []probe.TraceHop{hop(1, "192.168.1.1", 3, 0), hop(2, "100.72.0.1", 9, 0), hop(3, "198.51.100.14", 18, 0)}
+		withTailscale(r, 3, 1, 2, &probe.TailscaleNetcheck{UDP: true, IPv4: true, IPv6: true, HardNAT: boolp(true)})
+		fs := expect(t, r, RuleTailscaleHardNAT, Warn)
+		f := find(fs, RuleTailscaleHardNAT)
+		for _, want := range []string{"carrier-grade NAT", "2 of 3 active peers", "IPv6 works"} {
+			if !strings.Contains(f.Evidence, want) {
+				t.Errorf("evidence missing %q: %s", want, f.Evidence)
+			}
+		}
+		if !strings.Contains(f.Suggestion, "ISP") {
+			t.Errorf("behind CGNAT, router settings won't help: %s", f.Suggestion)
+		}
+	})
+	t.Run("hard NAT without relayed peers is only info", func(t *testing.T) {
+		r := healthy()
+		withTailscale(r, 0, 0, 0, &probe.TailscaleNetcheck{UDP: true, IPv4: true, HardNAT: boolp(true)})
+		fs := expect(t, r, RuleHealthy, Info)
+		if f := find(fs, RuleTailscaleHardNAT); f == nil || f.Severity != Info || !strings.Contains(f.Suggestion, "UPnP") {
+			t.Errorf("expected hard NAT info suggesting UPnP: %+v", f)
+		}
+	})
+	t.Run("relayed peers on an easy NAT blame the other side", func(t *testing.T) {
+		r := healthy()
+		withTailscale(r, 2, 1, 1, &probe.TailscaleNetcheck{UDP: true, IPv4: true, HardNAT: boolp(false)})
+		f := find(Analyze(r, th), RuleTailscaleRelayed)
+		if f == nil || f.Severity != Info || !strings.Contains(f.Evidence, "other devices' networks") {
+			t.Errorf("expected relayed info: %+v", f)
+		}
+	})
+	t.Run("not connected and health warnings", func(t *testing.T) {
+		r := healthy()
+		withTailscale(r, 0, 0, 0, nil)
+		r.Tailscale.Status.BackendState = "NeedsLogin"
+		r.Tailscale.Status.Health = []string{"You are logged out"}
+		fs := expect(t, r, RuleTailscaleHealth, Warn)
+		if f := find(fs, RuleTailscaleDown); f == nil || !strings.Contains(f.Evidence, "NeedsLogin") {
+			t.Errorf("expected not-connected info: %+v", f)
+		}
+		if f := find(fs, RuleTailscaleHealth); f.Evidence != "You are logged out." {
+			t.Errorf("health evidence %q", f.Evidence)
 		}
 	})
 }

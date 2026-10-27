@@ -23,6 +23,21 @@ func RunCommand(ctx context.Context, name string, args ...string) (string, error
 	return buf.String(), err
 }
 
+// RunCommandStdout is RunCommand for tools that log to stderr while writing
+// machine-readable output to stdout; the two are returned separately.
+func RunCommandStdout(ctx context.Context, name string, args ...string) (stdout, stderr string, err error) {
+	cmd := exec.CommandContext(ctx, name, args...)
+	var out, errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	cmd.WaitDelay = 500 * time.Millisecond
+	err = cmd.Run()
+	if ctx.Err() != nil {
+		err = ctx.Err()
+	}
+	return out.String(), errBuf.String(), err
+}
+
 // LookPath reports the full path of an executable on PATH, or "".
 func LookPath(name string) string {
 	p, err := exec.LookPath(name)

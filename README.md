@@ -42,10 +42,16 @@ helpnet is local and private. It has no accounts and no telemetry, and the only 
 ## Install
 
 ```sh
-go install github.com/helpnet/helpnet/cmd/helpnet@latest
+go install github.com/samcjohns/helpnet/cmd/helpnet@latest
 ```
 
-Or download a binary from the releases page, or build from source with `make build`.
+Or download a prebuilt binary for macOS, Linux or Windows from the [releases page](https://github.com/samcjohns/helpnet/releases), or build from source:
+
+```sh
+git clone https://github.com/samcjohns/helpnet
+cd helpnet
+make build
+```
 
 ### Optional tools
 
@@ -56,6 +62,7 @@ helpnet works without these. When one is missing, its block shows as skipped alo
 | [Trippy](https://trippy.rs) (`trip`) | Per-hop route trace (preferred) | `brew install trippy` · `cargo install trippy` · `winget install trippy` |
 | `traceroute` / `tracert` | Route trace fallback | Ships with macOS and Windows; `apt install traceroute` on Linux |
 | [`librespeed-cli`](https://github.com/librespeed/speedtest-cli) | Bandwidth test (`--speed`, `/speed`) | `brew install librespeed-cli` or a release binary |
+| [Tailscale](https://tailscale.com) (`tailscale`) | Tailscale check (layer 7) | Not needed otherwise: without it the check is left out entirely rather than shown as skipped |
 
 These tools only ever run as separate processes. helpnet never bundles or redistributes them.
 
@@ -67,6 +74,7 @@ helpnet example.com             # use example.com as the HTTP target
 helpnet --quick                 # skip route trace and bandwidth test
 helpnet --speed                 # include the bandwidth test (off by default)
 helpnet --no-tui                # plain streaming text output, no full-screen UI
+helpnet --no-tui -v             # plain output plus every check's details and raw tool output
 helpnet --json                  # run non-interactively, print a JSON report
 helpnet --export report.md      # run and save the report (.json → JSON)
 ```
@@ -80,10 +88,13 @@ helpnet --export report.md      # run and save the report (.json → JSON)
 | `--speed` | off | Include the bandwidth test |
 | `--no-tui` | off | Line-based output (automatic when stdout isn't a terminal) |
 | `--json` | off | Machine-readable output; implies `--no-tui` |
+| `-v, --verbose` | off | Show per-check details and raw tool output (in the TUI: start with `/verbose` on) |
 | `--export <path>` | — | Write the report when the run ends |
 | `--config <path>` | see below | Alternate config file |
 
 **Exit codes:** `0` all checks passed · `1` warnings · `2` failures · `3` helpnet itself errored. Skipped optional checks don't count against the result.
+
+While the TUI runs, it sets the terminal tab title to the check in progress (`helpnet · DNS…`), then to the outcome (`✓ helpnet · 100/100`, `⚠ helpnet · Gateway · 72/100`). The previous title is restored on exit in terminals that support the xterm title stack.
 
 ### Keys
 
@@ -112,7 +123,7 @@ As you type in the command bar, a popup suggests matching commands. Use `tab` to
 | `/trace [host]` | Run the per-hop route trace |
 | `/dns [domain]` | Run the DNS comparison on a specific domain |
 | `/export [path]` | Save the report (Markdown by default; `.json` → JSON) |
-| `/details` | Toggle details and raw tool output for all blocks |
+| `/verbose` | Toggle details and raw tool output for all blocks (shows stored results; nothing is re-run) |
 | `/help` | List commands |
 | `/quit` | Exit |
 
@@ -129,8 +140,9 @@ Checks run from nearest to farthest, so the first failing layer points at the pr
 | 4 | **HTTP timing** | 3 HTTPS GETs with connection reuse off, split into DNS · TCP · TLS · time to first byte · transfer. Also records status, redirects, protocol, TLS version and connected IP, and times one request over IPv4 and one over IPv6 to catch a broken IPv6 path |
 | 5 | **Route trace** | Trippy, or the OS traceroute as a fallback. Finds the hop where latency or loss starts *and persists to the destination*. Loss at a middle hop that clears up downstream is recognised as ICMP rate limiting |
 | 6 | **Bandwidth** | `librespeed-cli`, only with `--speed` or `/speed` |
+| 7 | **Tailscale** | Only when the `tailscale` CLI is installed. Reads `tailscale status` (how many active peers connect directly, via a DERP relay or via a peer relay) and `tailscale netcheck` (UDP, IPv4/IPv6, whether the NAT is "hard", i.e. maps each destination to a different port, UPnP/NAT-PMP/PCP and the home DERP region and its latency). `netcheck` sends its own probes to Tailscale's DERP servers. Runs in quick mode too, since it takes well under a second. Not scored |
 
-The default workflow (layers 0–5) usually finishes in under 10 seconds.
+The default workflow (layers 0–5, plus 7 when Tailscale is installed) usually finishes in under 10 seconds.
 
 ## How results are interpreted
 
@@ -143,6 +155,8 @@ A rule engine (`internal/interpret`) reasons *across* layers rather than flaggin
 - **Network and DNS fine, TTFB high** → the website is slow, not your connection.
 - **TLS slow while TCP is fast** → possible TLS inspection by antivirus, a corporate proxy or a VPN.
 - **IPv6 hangs while IPv4 is fast** → broken IPv6 path. This is a classic cause of browser stalls.
+- **Your address, your gateway, or a trace hop before any public address is in 100.64.0.0/10** → you're behind carrier-grade NAT (CGNAT). Nothing is broken, but nothing on the internet can connect in to you. A private second hop that answers about as fast as your router suggests double NAT (two routers).
+- **Tailscale: no UDP, or a hard NAT while peers are relayed** → Tailscale traffic is going through DERP relays because of this network, and the suggestion depends on whether the NAT is yours or your ISP's (CGNAT). Relayed peers on an easy NAT point at the *other* device's network.
 - **Captive portal, VPN latency, weak Wi-Fi, packet loss starting at hop N…**
 - **Everything passes** → the connection is healthy. Look at the browser (extensions, cache) or the specific site using DevTools → Network.
 
@@ -165,7 +179,7 @@ Each finding has a severity (`info`/`warn`/`fail`), a layer, a title, the eviden
 
 ### Performance rating
 
-The overall 0–100 score is a weighted mean of per-layer scores: gateway 20, internet 25, DNS 20, HTTP 25, and bandwidth 10 when tested. Each layer scores its *worst* metric on a piecewise-linear curve: 100 up to half the warn threshold, 80 at warn, 40 at fail, and 0 at twice the fail threshold. The grades are Excellent ≥ 90, Good ≥ 75, Fair ≥ 50, Poor > 0, and Down when there is no connectivity. The summary shows the breakdown, including which metric set each layer's score, so you can always see why you got the rating. See `internal/interpret/score.go`.
+The overall 0–100 score is a weighted mean of per-layer scores: gateway 20, internet 25, DNS 20, HTTP 25, and bandwidth 10 when tested. The local interface, route trace and Tailscale checks aren't scored. Each layer scores its *worst* metric on a piecewise-linear curve: 100 up to half the warn threshold, 80 at warn, 40 at fail, and 0 at twice the fail threshold. The grades are Excellent ≥ 90, Good ≥ 75, Fair ≥ 50, Poor > 0, and Down when there is no connectivity. The summary shows the breakdown, including which metric set each layer's score, so you can always see why you got the rating. See `internal/interpret/score.go`.
 
 ## Reports
 
@@ -173,7 +187,7 @@ The overall 0–100 score is a weighted mean of per-layer scores: gateway 20, in
 
 The JSON format is documented as a JSON Schema in [`docs/report-schema.json`](docs/report-schema.json) (`"schema": "helpnet.report/v1"`), and the tests validate reports against it.
 
-Reports contain network diagnostics only: a timestamp, OS, helpnet version, interface type and the measurements. They never include usernames or your machine's hostname, and proxy credentials are redacted.
+Reports contain network diagnostics only: a timestamp, OS, helpnet version, interface type and the measurements. They never include usernames or your machine's hostname, and proxy credentials are redacted. From Tailscale they keep only counts and capabilities: no peer names, no tailnet name, no public IP addresses, and no raw `tailscale` output.
 
 ## Configuration
 
@@ -193,7 +207,7 @@ helpnet never needs root or admin, and it never asks for `sudo`. It prefers unpr
 ```
 cmd/helpnet/         CLI entry point, flag parsing, plain/JSON output
 internal/checks/     the layered workflow; each check emits typed events and results
-internal/probe/      ping, TCP, DNS, HTTP timing, traceroute/Trippy, LibreSpeed (+ parsers)
+internal/probe/      ping, TCP, DNS, HTTP timing, traceroute/Trippy, LibreSpeed, Tailscale (+ parsers)
 internal/sysinfo/    interface, gateway, VPN, proxy, Wi-Fi detection (per-OS build tags)
 internal/interpret/  pure rules engine, primary diagnosis, scoring
 internal/report/     summary model; Markdown, JSON and text renderers
@@ -215,4 +229,4 @@ The integration tests run the full workflow against a local TLS server, local DN
 
 ## License
 
-MIT; see [LICENSE](LICENSE). All linked Go dependencies are MIT or BSD-3-Clause licensed. Trippy (Apache-2.0), LibreSpeed CLI (LGPL-3.0) and the system traceroute are invoked as separate processes only.
+MIT; see [LICENSE](LICENSE). All linked Go dependencies are MIT or BSD-3-Clause licensed. Trippy (Apache-2.0), LibreSpeed CLI (LGPL-3.0), the Tailscale CLI and the system traceroute are invoked as separate processes only.

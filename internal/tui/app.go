@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -17,11 +18,11 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/helpnet/helpnet/internal/checks"
-	"github.com/helpnet/helpnet/internal/interpret"
-	"github.com/helpnet/helpnet/internal/probe"
-	"github.com/helpnet/helpnet/internal/report"
-	"github.com/helpnet/helpnet/internal/session"
+	"github.com/samcjohns/helpnet/internal/checks"
+	"github.com/samcjohns/helpnet/internal/interpret"
+	"github.com/samcjohns/helpnet/internal/probe"
+	"github.com/samcjohns/helpnet/internal/report"
+	"github.com/samcjohns/helpnet/internal/session"
 )
 
 // Options configures the TUI.
@@ -30,6 +31,7 @@ type Options struct {
 	Theme      string
 	Version    string
 	ExportPath string // --export: also written when the first run completes
+	Verbose    bool   // --verbose: start with details and raw output shown
 }
 
 type updateMsg struct {
@@ -80,6 +82,7 @@ type model struct {
 	tools      string
 	blockLines map[checks.ID][2]int // first/last content line of each block
 	summaryAt  int
+	title      string // last terminal title sent
 }
 
 // Run starts the TUI, runs the workflow, and returns the latest report when
@@ -87,6 +90,8 @@ type model struct {
 // subprocesses to stop.
 func Run(o Options) (*report.Report, error) {
 	m := newModel(o)
+	saveTitle(os.Stdout)
+	defer restoreTitle(os.Stdout)
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	final, err := p.Run()
 	if fm, ok := final.(*model); ok {
@@ -111,6 +116,7 @@ func newModel(o Options) *model {
 		running:   map[checks.ID]bool{},
 		progress:  map[checks.ID]string{},
 		expanded:  map[checks.ID]bool{},
+		showRaw:   o.Verbose,
 		everPlans: map[checks.ID]bool{},
 		follow:    true,
 		input:     in,
@@ -209,6 +215,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmd := m.update(msg)
 	m.layout()
 	m.refresh()
+	if t := m.titleCmd(); t != nil {
+		cmd = tea.Batch(cmd, t)
+	}
 	return m, cmd
 }
 
@@ -314,7 +323,20 @@ func (m *model) quit() tea.Cmd {
 	return tea.Quit
 }
 
-func (m *model) visibleIDs() []checks.ID { return checks.Order }
+// visibleIDs lists the check blocks to show. Tailscale appears only when it
+// is part of the plan (its CLI is installed) or has a result.
+func (m *model) visibleIDs() []checks.ID {
+	ids := make([]checks.ID, 0, len(checks.Order))
+	for _, id := range checks.Order {
+		if id == checks.Tailscale && !slices.Contains(m.base.Plan, id) {
+			if _, ran := m.results.States[id]; !ran {
+				continue
+			}
+		}
+		ids = append(ids, id)
+	}
+	return ids
+}
 
 func (m *model) handleKey(msg tea.KeyMsg) tea.Cmd {
 	ids := m.visibleIDs()
@@ -472,7 +494,7 @@ func (m *model) exec(line string) tea.Cmd {
 	case "/run":
 		return m.start(m.base.Plan, true, m.base.Opts)
 	case "/quick":
-		return m.start(checks.Plan(true, false), true, m.base.Opts)
+		return m.start(checks.WithInstalled(checks.Plan(true, false)), true, m.base.Opts)
 	case "/target":
 		if arg == "" {
 			return m.flash("Usage: /target <url>")
@@ -503,7 +525,7 @@ func (m *model) exec(line string) tea.Cmd {
 		return m.start([]checks.ID{checks.DNS}, false, opts)
 	case "/export":
 		return m.export(arg)
-	case "/details":
+	case "/verbose", "/details":
 		m.showRaw = !m.showRaw
 		if m.showRaw {
 			return m.flash("Showing details and raw output for all blocks")

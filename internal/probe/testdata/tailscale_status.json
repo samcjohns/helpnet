@@ -1,0 +1,17 @@
+{
+  "Version": "1.102.2-t6cac91817-g6ff0ddc72",
+  "TUN": true,
+  "BackendState": "Running",
+  "TailscaleIPs": ["100.100.1.1", "fd7a:115c:a1e0::1"],
+  "Self": {"HostName": "laptop", "DNSName": "laptop.example-tailnet.ts.net.", "OS": "linux", "Relay": "nyc", "Online": true},
+  "Health": ["Tailscale could not connect to the 'ord' relay server."],
+  "MagicDNSSuffix": "example-tailnet.ts.net",
+  "CurrentTailnet": {"Name": "user@example.com", "MagicDNSSuffix": "example-tailnet.ts.net", "MagicDNSEnabled": true},
+  "Peer": {
+    "nodekey:a": {"HostName": "fileserver9", "OS": "linux", "Online": true, "Active": true, "CurAddr": "192.0.2.10:41641", "Relay": "nyc", "PeerRelay": ""},
+    "nodekey:b": {"HostName": "nas", "OS": "linux", "Online": true, "Active": true, "CurAddr": "", "Relay": "iad", "PeerRelay": ""},
+    "nodekey:c": {"HostName": "phone", "OS": "android", "Online": true, "Active": true, "CurAddr": "", "Relay": "ord", "PeerRelay": "100.100.1.9:40000:vni:7"},
+    "nodekey:d": {"HostName": "tv", "OS": "tvOS", "Online": true, "Active": false, "CurAddr": "", "Relay": "nyc"},
+    "nodekey:e": {"HostName": "old", "OS": "windows", "Online": false, "Active": false, "CurAddr": "", "Relay": "lax", "ExitNode": false}
+  }
+}

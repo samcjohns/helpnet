@@ -16,11 +16,11 @@ import (
 
 	"github.com/mattn/go-isatty"
 
-	"github.com/helpnet/helpnet/internal/checks"
-	"github.com/helpnet/helpnet/internal/config"
-	"github.com/helpnet/helpnet/internal/report"
-	"github.com/helpnet/helpnet/internal/session"
-	"github.com/helpnet/helpnet/internal/tui"
+	"github.com/samcjohns/helpnet/internal/checks"
+	"github.com/samcjohns/helpnet/internal/config"
+	"github.com/samcjohns/helpnet/internal/report"
+	"github.com/samcjohns/helpnet/internal/session"
+	"github.com/samcjohns/helpnet/internal/tui"
 )
 
 // version is overridden at release time with -ldflags "-X main.version=…".
@@ -35,6 +35,7 @@ type cliFlags struct {
 	quick      bool
 	speed      bool
 	noTUI      bool
+	verbose    bool
 	json       bool
 	export     string
 	configPath string
@@ -53,6 +54,7 @@ Examples:
   helpnet --quick                 skip route trace and bandwidth test
   helpnet --speed                 include the bandwidth test
   helpnet --no-tui                plain streaming text output
+  helpnet --no-tui -v             plain output with every check's details
   helpnet --json                  print a JSON report to stdout
   helpnet --export report.md      run and save the report (.json for JSON)
 
@@ -64,6 +66,7 @@ Flags:
       --speed            include the bandwidth test (needs librespeed-cli)
       --no-tui           line-based output (automatic when stdout isn't a TTY)
       --json             machine-readable output; implies --no-tui
+  -v, --verbose          show per-check details and raw tool output
       --export <path>    write the report when the run ends
       --config <path>    alternate config file (default %s)
       --version          print the version
@@ -112,6 +115,8 @@ func parseFlags(args []string, stderr io.Writer) (cliFlags, []string, error) {
 	fs.BoolVar(&f.quick, "quick", false, "")
 	fs.BoolVar(&f.speed, "speed", false, "")
 	fs.BoolVar(&f.noTUI, "no-tui", false, "")
+	fs.BoolVar(&f.verbose, "verbose", false, "")
+	fs.BoolVar(&f.verbose, "v", false, "")
 	fs.BoolVar(&f.json, "json", false, "")
 	fs.StringVar(&f.export, "export", "", "")
 	fs.StringVar(&f.configPath, "config", "", "")
@@ -176,7 +181,7 @@ func run(args []string) int {
 
 	params := session.Params{
 		Opts:    checks.Options{Config: cfg, Target: target},
-		Plan:    checks.Plan(f.quick, f.speed),
+		Plan:    checks.WithInstalled(checks.Plan(f.quick, f.speed)),
 		Version: version,
 	}
 
@@ -189,11 +194,11 @@ func run(args []string) int {
 	case f.json:
 		rep = runJSON(ctx, params)
 	case f.noTUI || !tty:
-		rep = runPlain(ctx, params, os.Stdout, tty)
+		rep = runPlain(ctx, params, os.Stdout, tty, f.verbose)
 	default:
 		stop() // the TUI handles ctrl+c itself
 		var err error
-		rep, err = tui.Run(tui.Options{Params: params, Theme: cfg.UI.Theme, Version: version, ExportPath: f.export})
+		rep, err = tui.Run(tui.Options{Params: params, Theme: cfg.UI.Theme, Version: version, ExportPath: f.export, Verbose: f.verbose})
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "helpnet: %v\n", err)
 			return exitError

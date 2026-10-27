@@ -16,7 +16,7 @@ var commands = []command{
 	{"/trace", "[host]", "Run the per-hop route trace"},
 	{"/dns", "[domain]", "Run the DNS comparison on a specific domain"},
 	{"/export", "[path]", "Save the report (Markdown; .json extension → JSON)"},
-	{"/details", "", "Toggle raw output for all blocks"},
+	{"/verbose", "", "Toggle details and raw output for all blocks"},
 	{"/help", "", "List commands and keys"},
 	{"/quit", "", "Exit helpnet"},
 }

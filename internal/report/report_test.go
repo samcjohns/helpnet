@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/helpnet/helpnet/internal/checks"
-	"github.com/helpnet/helpnet/internal/config"
-	"github.com/helpnet/helpnet/internal/fixtures"
-	"github.com/helpnet/helpnet/internal/interpret"
+	"github.com/samcjohns/helpnet/internal/checks"
+	"github.com/samcjohns/helpnet/internal/config"
+	"github.com/samcjohns/helpnet/internal/fixtures"
+	"github.com/samcjohns/helpnet/internal/interpret"
 )
 
 var update = flag.Bool("update", false, "rewrite golden files")

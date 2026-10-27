@@ -5,10 +5,10 @@ import (
 	"math"
 	"strings"
 
-	"github.com/helpnet/helpnet/internal/checks"
-	"github.com/helpnet/helpnet/internal/config"
-	"github.com/helpnet/helpnet/internal/probe"
-	"github.com/helpnet/helpnet/internal/sysinfo"
+	"github.com/samcjohns/helpnet/internal/checks"
+	"github.com/samcjohns/helpnet/internal/config"
+	"github.com/samcjohns/helpnet/internal/probe"
+	"github.com/samcjohns/helpnet/internal/sysinfo"
 )
 
 // Rule identifiers, one per kind of finding.
@@ -46,6 +46,14 @@ const (
 	RuleTraceLoss        = "trace-loss"
 	RuleTraceRateLimit   = "trace-rate-limit"
 	RuleSlowDownload     = "slow-download"
+	RuleCGNAT            = "cgnat"
+	RuleDoubleNAT        = "double-nat"
+	RuleTailscaleDown    = "tailscale-not-connected"
+	RuleTailscaleHealth  = "tailscale-health"
+	RuleTailscaleNoUDP   = "tailscale-no-udp"
+	RuleTailscaleHardNAT = "tailscale-hard-nat"
+	RuleTailscaleRelayed = "tailscale-relayed"
+	RuleTailscaleDirect  = "tailscale-direct"
 	RuleHealthy          = "healthy"
 )
 
@@ -112,6 +120,8 @@ type analysis struct {
 	gwSev   Severity // gateway latency/loss/jitter severity
 	inetSev Severity // internet latency/loss/jitter severity
 	dnsSev  Severity // system resolver severity
+
+	cgnat bool // a CGNAT finding was added
 }
 
 func (a *analysis) add(f Finding) { a.out = append(a.out, f) }
@@ -138,6 +148,7 @@ func Analyze(r *checks.Results, th config.Thresholds) []Finding {
 	a.httpRules()
 	a.traceRules()
 	a.speedRules()
+	a.tailscaleRules()
 	a.healthyRule()
 	sortFindings(a.out)
 	return a.out
@@ -216,6 +227,7 @@ func (a *analysis) localRules() {
 			})
 		}
 	}
+	a.localCGNAT()
 }
 
 func (a *analysis) internetEvidenceSuffix() string {
@@ -921,6 +933,7 @@ func (a *analysis) traceRules() {
 			Suggestion: hopSuggestion(ta.JumpHop),
 		})
 	}
+	a.traceNAT()
 	if len(ta.RateLimited) > 0 && ta.LossHop == 0 {
 		hops := make([]string, len(ta.RateLimited))
 		for i, ttl := range ta.RateLimited {
@@ -962,6 +975,228 @@ func (a *analysis) speedRules() {
 	}
 	a.add(Finding{Rule: RuleSlowDownload, Severity: sev, Layer: checks.Speed, Confidence: High,
 		Title: "Download speed is low", Evidence: ev, Suggestion: sugg})
+}
+
+// ---- NAT -------------------------------------------------------------------
+
+// natHop is a trace hop that reveals NAT beyond your router.
+type natHop struct {
+	TTL  int
+	Addr string
+}
+
+// findTraceNAT looks past your router (hop 1) for more NAT before the route
+// reaches a public address: a hop in the CGNAT range (RFC 6598), or a
+// private hop 2 that answers about as fast as hop 1, i.e. a second router on
+// the same premises. A private hop 2 further away is usually just the ISP
+// numbering its own routers privately, so it is not reported.
+func findTraceNAT(hops []probe.TraceHop) (cgnat, private natHop) {
+	var first *probe.TraceHop
+	for i, h := range hops {
+		if !h.Responded() || len(h.Hosts) == 0 {
+			continue
+		}
+		if h.TTL <= 1 {
+			first = &hops[i]
+			continue
+		}
+		addr := h.Hosts[0]
+		switch {
+		case probe.IsCGNAT(addr):
+			return natHop{h.TTL, addr}, private
+		case probe.IsPublicAddr(addr):
+			return cgnat, private
+		case probe.IsPrivateAddr(addr) && h.TTL == 2 && first != nil && bestMs(h) <= bestMs(*first)+2:
+			private = natHop{h.TTL, addr}
+		}
+	}
+	return cgnat, private
+}
+
+func bestMs(h probe.TraceHop) float64 {
+	if h.BestMs > 0 {
+		return h.BestMs
+	}
+	return h.AvgMs
+}
+
+// localCGNAT spots CGNAT from this device's own address or its gateway,
+// e.g. a phone hotspot or an ISP modem in bridge mode.
+func (a *analysis) localCGNAT() {
+	l := a.r.Local
+	if l.Type == sysinfo.TypeVPN {
+		return
+	}
+	var ev string
+	for _, ip := range l.IPv4 {
+		if probe.IsCGNAT(ip) {
+			ev = fmt.Sprintf("This device's address %s is", ip)
+			break
+		}
+	}
+	if ev == "" && probe.IsCGNAT(l.Gateway) {
+		ev = fmt.Sprintf("Your gateway %s is", l.Gateway)
+	}
+	if ev == "" {
+		return
+	}
+	ev += " in 100.64.0.0/10, the range reserved for carrier-grade NAT (RFC 6598)."
+	if a.tailscaleInUse() {
+		ev += " Tailscale numbers its devices from the same range, so addresses on this network can clash with tailnet routes."
+	}
+	a.addCGNAT(checks.Local, Medium, ev)
+}
+
+// traceNAT reports NAT the route trace reveals beyond your router. A VPN
+// default route hides the real path, so the trace says nothing about it.
+func (a *analysis) traceNAT() {
+	if a.cgnat || a.r.Local == nil || a.r.Local.VPN.DefaultRoute {
+		return
+	}
+	cgnat, private := findTraceNAT(a.r.Trace.Hops)
+	if cgnat.TTL > 0 {
+		a.addCGNAT(checks.Trace, High, fmt.Sprintf("Hop %d (%s) is in 100.64.0.0/10, the range reserved for carrier-grade NAT (RFC 6598), and comes before any public address: your ISP shares one public IPv4 address between your router and other customers.", cgnat.TTL, cgnat.Addr))
+		return
+	}
+	if private.TTL > 0 {
+		a.add(Finding{Rule: RuleDoubleNAT, Severity: Info, Layer: checks.Trace, Confidence: Low,
+			Title:      "There may be a second router between yours and the internet",
+			Evidence:   fmt.Sprintf("Hop %d (%s) has a private address and answers almost as fast as your router, so traffic likely crosses a second router on your premises (for example an ISP modem/router in front of your own). It could also be your ISP numbering a very close router privately.", private.TTL, private.Addr),
+			Suggestion: "If you have two routers, put one in bridge or access-point mode. Double NAT breaks port forwarding and makes peer-to-peer connections (Tailscale, games, video calls) harder.",
+		})
+	}
+}
+
+func (a *analysis) addCGNAT(layer checks.ID, conf Confidence, ev string) {
+	a.cgnat = true
+	if n := a.tailscaleNetcheck(); n != nil && n.UDP && n.HardNAT != nil && !*n.HardNAT {
+		ev += " Tailscale's netcheck finds this NAT easy to traverse, so direct Tailscale connections should still work."
+	}
+	a.add(Finding{Rule: RuleCGNAT, Severity: Info, Layer: layer, Confidence: conf,
+		Title:      "You're behind carrier-grade NAT (CGNAT)",
+		Evidence:   ev,
+		Suggestion: "Nothing is broken, but devices on the internet can't connect in to you: port forwarding won't work, and peer-to-peer apps (Tailscale, games, video calls) may fall back to relays. If you need inbound connections, ask your ISP for a public IPv4 address or use IPv6.",
+	})
+}
+
+// ---- Tailscale -------------------------------------------------------------
+
+func (a *analysis) tailscaleNetcheck() *probe.TailscaleNetcheck {
+	if t := a.r.Tailscale; t != nil && a.r.Ran(checks.Tailscale) {
+		return t.Netcheck
+	}
+	return nil
+}
+
+// tailscaleInUse reports whether this device runs Tailscale, judged by the
+// Tailscale check or, before it has run, a tailscale interface.
+func (a *analysis) tailscaleInUse() bool {
+	if a.r.Tailscale != nil {
+		return true
+	}
+	if l := a.r.Local; l != nil {
+		for _, name := range l.VPN.Interfaces {
+			if strings.HasPrefix(strings.ToLower(name), "tailscale") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (a *analysis) tailscaleRules() {
+	t := a.r.Tailscale
+	if t == nil || !a.r.Ran(checks.Tailscale) {
+		return
+	}
+	s, n := t.Status, t.Netcheck
+	if !s.Running() {
+		a.add(Finding{Rule: RuleTailscaleDown, Severity: Info, Layer: checks.Tailscale, Confidence: High,
+			Title:      "Tailscale isn't connected",
+			Evidence:   fmt.Sprintf("tailscaled reports state %q, so this device isn't on your tailnet.", s.BackendState),
+			Suggestion: "Run tailscale up, or sign in from the Tailscale app.",
+		})
+	}
+	if len(s.Health) > 0 {
+		ev := strings.Join(s.Health, " ")
+		if !strings.HasSuffix(ev, ".") {
+			ev += "."
+		}
+		a.add(Finding{Rule: RuleTailscaleHealth, Severity: Warn, Layer: checks.Tailscale, Confidence: Medium,
+			Title:      "Tailscale reports a problem",
+			Evidence:   ev,
+			Suggestion: "Run tailscale status for details; restarting Tailscale often clears transient warnings.",
+		})
+	}
+
+	relayedEv := ""
+	if s.Relayed > 0 {
+		relayedEv = fmt.Sprintf(" %d of %d active peers are relayed through DERP (%s).", s.Relayed, s.Active, firstNonEmpty(strings.Join(s.RelayRegions, ", "), "unknown region"))
+	}
+	explained := false
+	switch {
+	case n == nil:
+	case !n.UDP:
+		explained = true
+		a.add(Finding{Rule: RuleTailscaleNoUDP, Severity: Warn, Layer: checks.Tailscale, Confidence: High,
+			Title:      "Tailscale can't use UDP on this network",
+			Evidence:   "netcheck got no UDP replies from Tailscale's servers, so every connection goes through a DERP relay over HTTPS" + homeRelay(s, n) + "." + relayedEv,
+			Suggestion: "Expect lower throughput and higher latency between your devices. A firewall is probably blocking outbound UDP; allow UDP to ports 41641 and 3478, or try another network.",
+		})
+	case n.HardNAT != nil && *n.HardNAT:
+		explained = true
+		sev, title := Info, "This network's NAT makes direct Tailscale connections harder"
+		if s.Relayed > 0 {
+			sev, title = Warn, "This network's NAT is forcing Tailscale through relays"
+		}
+		ev := "Your NAT gives each destination a different public port (a \"hard\" NAT), so peers can't predict where to reach you and need a relay unless their own side is easy to reach."
+		if a.cgnat {
+			ev += " This is typical of carrier-grade NAT, which this network is behind."
+		}
+		ev += relayedEv
+		if n.IPv6 {
+			ev += " IPv6 works, so peers that also have IPv6 can still connect directly."
+		}
+		sugg := "If this is your router, enable UPnP or NAT-PMP so Tailscale can open a port, and check for a second router (double NAT). Otherwise, run a Tailscale peer relay on a node with a public address."
+		if a.cgnat {
+			sugg = "The NAT belongs to your ISP, so router settings won't help. Ask your ISP for a public IPv4 address, make sure IPv6 works on your devices, or run a Tailscale peer relay on a node with a public address."
+		}
+		a.add(Finding{Rule: RuleTailscaleHardNAT, Severity: sev, Layer: checks.Tailscale, Confidence: High,
+			Title: title, Evidence: ev, Suggestion: sugg})
+	}
+
+	switch {
+	case s.Relayed > 0 && !explained:
+		ev := strings.TrimSpace(relayedEv)
+		if n != nil && n.UDP && n.HardNAT != nil && !*n.HardNAT {
+			ev += " This network's NAT is easy to traverse, so the other devices' networks are the likely cause."
+		}
+		a.add(Finding{Rule: RuleTailscaleRelayed, Severity: Info, Layer: checks.Tailscale, Confidence: Medium,
+			Title:      fmt.Sprintf("%d active Tailscale peer(s) relayed through DERP", s.Relayed),
+			Evidence:   ev,
+			Suggestion: "Run tailscale status to see which peers are relayed, and tailscale netcheck on those devices.",
+		})
+	case s.Active > 0 && s.Relayed == 0:
+		ev := fmt.Sprintf("%d of %d active peers connect directly", s.Direct, s.Active)
+		if s.PeerRelayed > 0 {
+			ev += fmt.Sprintf(" and %d through a Tailscale peer relay", s.PeerRelayed)
+		}
+		a.add(Finding{Rule: RuleTailscaleDirect, Severity: Info, Layer: checks.Tailscale, Confidence: High,
+			Title:    "No Tailscale peers are relayed through DERP",
+			Evidence: ev + ".",
+		})
+	}
+}
+
+// homeRelay describes the DERP region traffic falls back to.
+func homeRelay(s probe.TailscaleStatus, n *probe.TailscaleNetcheck) string {
+	if s.HomeRelay == "" {
+		return ""
+	}
+	if n != nil && n.DERPLatencyMs > 0 {
+		return fmt.Sprintf(" (home relay %s, %s away)", s.HomeRelay, ms(n.DERPLatencyMs))
+	}
+	return " (home relay " + s.HomeRelay + ")"
 }
 
 // ---- Healthy ---------------------------------------------------------------
