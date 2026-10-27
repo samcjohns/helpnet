@@ -1,0 +1,4 @@
+* text=auto eol=lf
+# Golden files and captured tool output must keep their exact bytes
+# (tracert/ping Windows captures intentionally use CRLF).
+internal/**/testdata/** -text

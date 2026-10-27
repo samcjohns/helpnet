@@ -1,0 +1,3 @@
+Ping wird ausgeführt für 8.8.8.8 mit 32 Bytes Daten:
+Antwort von 8.8.8.8: Bytes=32 Zeit=14ms TTL=117
+Antwort von 8.8.8.8: Bytes=32 Zeit=15ms TTL=117

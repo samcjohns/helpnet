@@ -1,0 +1,6 @@
+/helpnet
+/helpnet.exe
+/dist/
+helpnet-report-*.md
+*.test
+*.out

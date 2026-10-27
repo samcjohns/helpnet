@@ -1,0 +1,378 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/helpnet/helpnet/docs/report-schema.json",
+  "title": "helpnet report",
+  "description": "Output of `helpnet --json` and of `--export report.json` / `/export report.json`. Schema identifier: helpnet.report/v1. Fields may be added in later v1 releases; existing fields keep their meaning.",
+  "type": "object",
+  "required": ["schema", "helpnet_version", "timestamp", "os", "arch", "target", "duration_ms", "complete", "conclusion", "rating", "statistics", "findings", "checks", "results", "exit_code"],
+  "properties": {
+    "schema": { "const": "helpnet.report/v1" },
+    "helpnet_version": { "type": "string" },
+    "timestamp": { "type": "string", "format": "date-time", "description": "Run start time, UTC." },
+    "os": { "type": "string", "examples": ["linux", "darwin", "windows"] },
+    "arch": { "type": "string" },
+    "interface_type": { "enum": ["Wi-Fi", "Ethernet", "Cellular", "VPN", "Other", ""] },
+    "target": { "type": "string", "description": "HTTP timing target URL." },
+    "duration_ms": { "type": "number", "minimum": 0 },
+    "complete": { "type": "boolean", "description": "False if the run was cancelled before all planned checks finished." },
+    "conclusion": { "$ref": "#/$defs/conclusion" },
+    "primary_diagnosis": { "$ref": "#/$defs/finding" },
+    "rating": { "$ref": "#/$defs/rating" },
+    "statistics": { "type": "array", "items": { "$ref": "#/$defs/statRow" } },
+    "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+    "checks": { "type": "array", "items": { "$ref": "#/$defs/check" } },
+    "results": { "$ref": "#/$defs/results" },
+    "exit_code": { "enum": [0, 1, 2], "description": "0 all checks passed, 1 warnings, 2 failures." }
+  },
+  "$defs": {
+    "checkId": { "enum": ["local", "gateway", "internet", "dns", "http", "trace", "speed"] },
+    "status": { "enum": ["pending", "running", "pass", "warn", "fail", "skipped"] },
+    "severity": { "enum": ["info", "warn", "fail"] },
+    "conclusion": {
+      "type": "object",
+      "required": ["headline", "text", "severity"],
+      "properties": {
+        "headline": { "type": "string" },
+        "text": { "type": "string" },
+        "severity": { "$ref": "#/$defs/severity" },
+        "suggestion": { "type": "string" }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "required": ["rule", "severity", "layer", "title", "evidence", "confidence"],
+      "properties": {
+        "rule": { "type": "string", "description": "Stable identifier of the rule that produced the finding, e.g. dns-system-slow." },
+        "severity": { "$ref": "#/$defs/severity" },
+        "layer": { "$ref": "#/$defs/checkId" },
+        "title": { "type": "string" },
+        "evidence": { "type": "string" },
+        "suggestion": { "type": "string" },
+        "confidence": { "enum": ["low", "medium", "high"] }
+      },
+      "additionalProperties": false
+    },
+    "rating": {
+      "type": "object",
+      "required": ["score", "grade", "layers"],
+      "properties": {
+        "score": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "grade": { "enum": ["Excellent", "Good", "Fair", "Poor", "Down", "Unknown"] },
+        "layers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["layer", "score", "weight", "basis"],
+            "properties": {
+              "layer": { "$ref": "#/$defs/checkId" },
+              "score": { "type": "integer", "minimum": 0, "maximum": 100 },
+              "weight": { "type": "number", "exclusiveMinimum": 0 },
+              "basis": { "type": "string", "description": "The metric that set this layer's score." }
+            }
+          }
+        }
+      }
+    },
+    "statRow": {
+      "type": "object",
+      "required": ["layer", "target", "status"],
+      "properties": {
+        "layer": { "type": "string" },
+        "target": { "type": "string" },
+        "avg": { "type": "string" },
+        "p95": { "type": "string" },
+        "jitter": { "type": "string" },
+        "loss": { "type": "string" },
+        "summary": { "type": "string", "description": "Replaces avg…loss for HTTP, trace and bandwidth rows." },
+        "status": { "$ref": "#/$defs/status" }
+      }
+    },
+    "state": {
+      "type": "object",
+      "required": ["outcome", "duration_ms"],
+      "properties": {
+        "outcome": { "enum": ["ok", "error", "skipped"] },
+        "error": { "type": "string" },
+        "skip_reason": { "type": "string" },
+        "hint": { "type": "string", "description": "Install hint when an optional tool is missing." },
+        "duration_ms": { "type": "number", "minimum": 0 },
+        "notes": { "type": ["array", "null"], "items": { "type": "string" } }
+      }
+    },
+    "check": {
+      "type": "object",
+      "required": ["id", "title", "layer", "status", "summary", "state"],
+      "properties": {
+        "id": { "$ref": "#/$defs/checkId" },
+        "title": { "type": "string" },
+        "layer": { "type": "integer", "minimum": 0, "maximum": 6 },
+        "status": { "$ref": "#/$defs/status" },
+        "summary": { "type": "string" },
+        "state": { "$ref": "#/$defs/state" },
+        "details": { "type": ["array", "null"], "items": { "type": "string" } }
+      }
+    },
+    "latency": {
+      "type": "object",
+      "required": ["sent", "received", "loss_pct", "min_ms", "avg_ms", "max_ms", "p95_ms", "jitter_ms"],
+      "properties": {
+        "sent": { "type": "integer", "minimum": 0 },
+        "received": { "type": "integer", "minimum": 0 },
+        "loss_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+        "min_ms": { "type": "number" },
+        "avg_ms": { "type": "number" },
+        "max_ms": { "type": "number" },
+        "p95_ms": { "type": "number" },
+        "jitter_ms": { "type": "number", "description": "Mean absolute difference between consecutive samples." },
+        "samples_ms": { "type": ["array", "null"], "items": { "type": "number" } }
+      }
+    },
+    "ping": {
+      "type": "object",
+      "required": ["host", "method", "stats"],
+      "properties": {
+        "host": { "type": "string" },
+        "method": { "enum": ["icmp", "system ping"] },
+        "stats": { "$ref": "#/$defs/latency" },
+        "note": { "type": "string" },
+        "raw": { "type": "string" }
+      }
+    },
+    "tcp": {
+      "type": "object",
+      "required": ["addr", "attempts", "connected", "refused", "stats"],
+      "properties": {
+        "addr": { "type": "string" },
+        "attempts": { "type": "integer" },
+        "connected": { "type": "integer" },
+        "refused": { "type": "integer" },
+        "stats": { "$ref": "#/$defs/latency" },
+        "error": { "type": "string" }
+      }
+    },
+    "httpSample": {
+      "type": "object",
+      "required": ["url", "redirects", "dns_ms", "connect_ms", "tls_ms", "ttfb_ms", "transfer_ms", "total_ms", "bytes"],
+      "properties": {
+        "url": { "type": "string" },
+        "final_url": { "type": "string" },
+        "redirects": { "type": "integer" },
+        "status": { "type": "integer" },
+        "proto": { "type": "string" },
+        "tls_version": { "type": "string" },
+        "remote_addr": { "type": "string" },
+        "dns_ms": { "type": "number" },
+        "connect_ms": { "type": "number" },
+        "tls_ms": { "type": "number" },
+        "ttfb_ms": { "type": "number" },
+        "transfer_ms": { "type": "number" },
+        "total_ms": { "type": "number" },
+        "bytes": { "type": "integer" },
+        "error": { "type": "string" },
+        "timed_out": { "type": "boolean" }
+      }
+    },
+    "results": {
+      "type": "object",
+      "description": "Raw measurements per check. A check's field is absent if it did not run.",
+      "required": ["states"],
+      "properties": {
+        "states": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/checkId" },
+          "additionalProperties": { "$ref": "#/$defs/state" }
+        },
+        "local": {
+          "type": "object",
+          "required": ["interface", "type", "vpn", "proxy"],
+          "properties": {
+            "interface": { "type": "string" },
+            "type": { "type": "string" },
+            "ipv4": { "type": "array", "items": { "type": "string" } },
+            "ipv6": { "type": "array", "items": { "type": "string" } },
+            "gateway": { "type": "string" },
+            "dns_servers": { "type": "array", "items": { "type": "string" } },
+            "dns_note": { "type": "string" },
+            "vpn": {
+              "type": "object",
+              "required": ["active", "default_route"],
+              "properties": {
+                "active": { "type": "boolean" },
+                "interfaces": { "type": "array", "items": { "type": "string" } },
+                "default_route": { "type": "boolean" }
+              }
+            },
+            "proxy": {
+              "type": "object",
+              "required": ["detected"],
+              "properties": {
+                "detected": { "type": "boolean" },
+                "sources": { "type": "array", "items": { "type": "string" }, "description": "Credentials are redacted." }
+              }
+            },
+            "wifi": {
+              "type": "object",
+              "properties": {
+                "signal_dbm": { "type": "integer" },
+                "signal_pct": { "type": "integer" },
+                "link_rate_mbps": { "type": "number" },
+                "source": { "type": "string" }
+              }
+            },
+            "notes": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "gateway": {
+          "type": "object",
+          "required": ["address", "ping", "icmp_blocked", "reachable"],
+          "properties": {
+            "address": { "type": "string" },
+            "ping": { "$ref": "#/$defs/ping" },
+            "tcp_fallback": { "type": "array", "items": { "$ref": "#/$defs/tcp" } },
+            "icmp_blocked": { "type": "boolean" },
+            "reachable": { "type": "boolean" }
+          }
+        },
+        "internet": {
+          "type": "object",
+          "required": ["pings", "tcp", "icmp_blocked", "reachable"],
+          "properties": {
+            "pings": { "type": "array", "items": { "$ref": "#/$defs/ping" } },
+            "tcp": { "type": "array", "items": { "$ref": "#/$defs/tcp" } },
+            "captive_portal": {
+              "type": "object",
+              "required": ["url", "detected"],
+              "properties": {
+                "url": { "type": "string" },
+                "status": { "type": "integer" },
+                "location": { "type": "string" },
+                "body_sample": { "type": "string" },
+                "detected": { "type": "boolean" },
+                "error": { "type": "string" }
+              }
+            },
+            "icmp_blocked": { "type": "boolean" },
+            "reachable": { "type": "boolean" }
+          }
+        },
+        "dns": {
+          "type": "object",
+          "required": ["domains", "resolvers", "cdn_differs"],
+          "properties": {
+            "domains": { "type": "array", "items": { "type": "string" } },
+            "resolvers": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "system", "answered", "avg_ms", "cold_avg_ms", "warm_avg_ms", "failures"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "server": { "type": "string" },
+                  "system": { "type": "boolean" },
+                  "queries": {
+                    "type": ["array", "null"],
+                    "items": {
+                      "type": "object",
+                      "required": ["domain", "type", "ms", "rcode"],
+                      "properties": {
+                        "domain": { "type": "string" },
+                        "type": { "enum": ["A", "AAAA"] },
+                        "ms": { "type": "number" },
+                        "rcode": { "type": "string", "examples": ["NOERROR", "NXDOMAIN", "SERVFAIL", "TIMEOUT", "ERROR"] },
+                        "answers": { "type": "array", "items": { "type": "string" } },
+                        "error": { "type": "string" }
+                      }
+                    }
+                  },
+                  "answered": { "type": "integer" },
+                  "avg_ms": { "type": "number" },
+                  "min_ms": { "type": "number" },
+                  "max_ms": { "type": "number" },
+                  "p95_ms": { "type": "number" },
+                  "cold_avg_ms": { "type": "number", "description": "First lookup per domain (likely uncached)." },
+                  "warm_avg_ms": { "type": "number", "description": "Repeat lookups." },
+                  "failures": { "type": "integer" },
+                  "nxdomain": { "type": "integer" },
+                  "servfail": { "type": "integer" },
+                  "timeouts": { "type": "integer" },
+                  "aaaa_answers": { "type": "integer" }
+                }
+              }
+            },
+            "differences": { "type": "array", "items": { "type": "string" } },
+            "cdn_differs": { "type": "integer" }
+          }
+        },
+        "http": {
+          "type": "object",
+          "required": ["target", "host", "samples", "ok"],
+          "properties": {
+            "target": { "type": "string" },
+            "host": { "type": "string" },
+            "samples": { "type": ["array", "null"], "items": { "$ref": "#/$defs/httpSample" } },
+            "ok": { "type": "integer" },
+            "dns_ms": { "type": "number" },
+            "connect_ms": { "type": "number" },
+            "tls_ms": { "type": "number" },
+            "ttfb_ms": { "type": "number" },
+            "transfer_ms": { "type": "number" },
+            "total_ms": { "type": "number" },
+            "status": { "type": "integer" },
+            "final_url": { "type": "string" },
+            "redirects": { "type": "integer" },
+            "proto": { "type": "string" },
+            "tls_version": { "type": "string" },
+            "remote_addr": { "type": "string" },
+            "via_proxy": { "type": "boolean" },
+            "has_ipv4": { "type": "boolean" },
+            "has_ipv6": { "type": "boolean" },
+            "ipv4": { "$ref": "#/$defs/httpSample" },
+            "ipv6": { "$ref": "#/$defs/httpSample" },
+            "family_note": { "type": "string" }
+          }
+        },
+        "trace": {
+          "type": "object",
+          "required": ["tool", "target", "hops"],
+          "properties": {
+            "tool": { "enum": ["trip", "traceroute", "tracert"] },
+            "target": { "type": "string" },
+            "hops": {
+              "type": ["array", "null"],
+              "items": {
+                "type": "object",
+                "required": ["ttl", "sent", "received", "loss_pct", "avg_ms"],
+                "properties": {
+                  "ttl": { "type": "integer", "minimum": 1 },
+                  "hosts": { "type": "array", "items": { "type": "string" } },
+                  "name": { "type": "string" },
+                  "sent": { "type": "integer" },
+                  "received": { "type": "integer" },
+                  "loss_pct": { "type": "number" },
+                  "avg_ms": { "type": "number" },
+                  "best_ms": { "type": "number" },
+                  "worst_ms": { "type": "number" }
+                }
+              }
+            },
+            "raw": { "type": "string" },
+            "note": { "type": "string" }
+          }
+        },
+        "speed": {
+          "type": "object",
+          "required": ["tool", "download_mbps", "upload_mbps", "ping_ms", "jitter_ms"],
+          "properties": {
+            "tool": { "const": "librespeed-cli" },
+            "server": { "type": "string" },
+            "download_mbps": { "type": "number" },
+            "upload_mbps": { "type": "number" },
+            "ping_ms": { "type": "number" },
+            "jitter_ms": { "type": "number" },
+            "raw": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

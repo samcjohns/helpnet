@@ -1,0 +1,46 @@
+# helpnet configuration — every setting is optional.
+#
+# Location:
+#   macOS/Linux: ~/.config/helpnet/config.toml  (or $XDG_CONFIG_HOME/helpnet/config.toml)
+#   Windows:     %APPDATA%\helpnet\config.toml
+# Or pass --config <path>.
+#
+# The values below are the built-in defaults.
+
+target = "https://www.google.com"   # HTTP timing target (overridden by `helpnet <url>`)
+samples = 10                        # ping samples per host (1–100)
+timeout = "3s"                      # per-probe timeout
+
+[hosts]
+internet = ["1.1.1.1", "8.8.8.8"]                         # pinged + TCP 443 for reachability
+dns_public = ["1.1.1.1", "9.9.9.9"]                       # resolvers compared with your own
+dns_test_domains = ["google.com", "cloudflare.com", "wikipedia.org"]
+captive_url = "http://connectivitycheck.gstatic.com/generate_204"
+
+[thresholds]
+# Latency in ms, loss in %, speed in Mbps. "warn" ⇒ ⚠, "fail" ⇒ ✗.
+gateway_wifi_warn_ms = 20
+gateway_wifi_fail_ms = 80
+gateway_ethernet_warn_ms = 5
+gateway_ethernet_fail_ms = 30
+gateway_loss_warn_pct = 1
+gateway_loss_fail_pct = 5
+internet_warn_ms = 80
+internet_fail_ms = 200
+internet_loss_warn_pct = 1
+internet_loss_fail_pct = 5
+jitter_warn_ms = 20
+jitter_fail_ms = 50
+dns_warn_ms = 100
+dns_fail_ms = 300
+tcp_warn_ms = 150
+tcp_fail_ms = 500
+tls_warn_ms = 250
+tls_fail_ms = 800
+ttfb_warn_ms = 600
+ttfb_fail_ms = 2000
+download_warn_mbps = 25
+download_fail_mbps = 5
+
+[ui]
+theme = "auto"   # auto | dark | light   (NO_COLOR=1 disables colour)

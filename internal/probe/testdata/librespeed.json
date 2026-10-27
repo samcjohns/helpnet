@@ -1,0 +1,1 @@
+[{"timestamp":"2026-10-27T12:00:00Z","server":{"name":"Frankfurt, Germany (Clouvider)","url":"https://fra.speedtest.clouvider.net/backend"},"client":{"ip":"203.0.113.9","hostname":"","city":"","region":"","country":"","loc":"","org":"","postal":"","timezone":""},"bytes_sent":51380224,"bytes_received":390070272,"ping":12.4,"jitter":1.8,"upload":41.21,"download":312.66,"share":""}]

@@ -1,0 +1,9 @@
+{
+  "info": {"target": {"ip": "93.184.215.14", "hostname": "example.com"}},
+  "hops": [
+    {"ttl": 1, "hosts": [{"ip": "192.168.1.1", "hostname": "router.lan"}], "loss_pct": "0.00", "sent": 5, "last": "1.80", "recv": 5, "avg": "1.92", "best": "1.70", "worst": "2.30", "stddev": "0.20"},
+    {"ttl": 2, "hosts": [], "loss_pct": "100.00", "sent": 5, "last": "0.00", "recv": 0, "avg": "0.00", "best": "0.00", "worst": "0.00", "stddev": "0.00"},
+    {"ttl": 3, "hosts": [{"ip": "72.14.215.85", "hostname": "72.14.215.85"}], "loss_pct": "20.00", "sent": 5, "last": "95.10", "recv": 4, "avg": "96.40", "best": "94.00", "worst": "99.20", "stddev": "2.00"},
+    {"ttl": 4, "hosts": [{"ip": "93.184.215.14", "hostname": "example.com"}], "loss_pct": "20.00", "sent": 5, "last": "97.00", "recv": 4, "avg": "98.10", "best": "96.50", "worst": "100.10", "stddev": "1.50"}
+  ]
+}
