@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/samcjohns/helpnet/internal/config"
-	"github.com/samcjohns/helpnet/internal/watch"
+	"github.com/samcjohns/nethelp/internal/config"
+	"github.com/samcjohns/nethelp/internal/watch"
 )
 
 var watchT0 = time.Date(2026, 10, 28, 14, 0, 0, 0, time.UTC)

@@ -1,5 +1,5 @@
-// Package config loads helpnet settings from an optional TOML file and
-// provides defaults for every value, so helpnet works with no config at all.
+// Package config loads nethelp settings from an optional TOML file and
+// provides defaults for every value, so nethelp works with no config at all.
 package config
 
 import (
@@ -111,17 +111,17 @@ func Default() Config {
 func DefaultPath() string {
 	if runtime.GOOS == "windows" {
 		if appData := os.Getenv("APPDATA"); appData != "" {
-			return filepath.Join(appData, "helpnet", "config.toml")
+			return filepath.Join(appData, "nethelp", "config.toml")
 		}
 	}
 	if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" && runtime.GOOS != "windows" {
-		return filepath.Join(xdg, "helpnet", "config.toml")
+		return filepath.Join(xdg, "nethelp", "config.toml")
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return ""
 	}
-	return filepath.Join(home, ".config", "helpnet", "config.toml")
+	return filepath.Join(home, ".config", "nethelp", "config.toml")
 }
 
 // Load reads the config at path on top of the defaults. A missing file at the

@@ -10,7 +10,7 @@ import (
 
 	"github.com/mattn/go-runewidth"
 
-	"github.com/samcjohns/helpnet/internal/interpret"
+	"github.com/samcjohns/nethelp/internal/interpret"
 )
 
 // Icon returns the status glyph used everywhere.
@@ -59,9 +59,9 @@ func Markdown(r Report) string {
 	var b strings.Builder
 	w := func(format string, args ...any) { fmt.Fprintf(&b, format, args...) }
 
-	w("# helpnet report\n\n")
+	w("# nethelp report\n\n")
 	w("- **Date:** %s\n", r.Timestamp.Format("2006-01-02 15:04:05 MST"))
-	w("- **helpnet:** %s (%s/%s)\n", r.Version, r.OS, r.Arch)
+	w("- **nethelp:** %s (%s/%s)\n", r.Version, r.OS, r.Arch)
 	if r.InterfaceType != "" {
 		w("- **Interface type:** %s\n", r.InterfaceType)
 	}
@@ -268,5 +268,5 @@ func Export(r Report, path string) error {
 
 // DefaultExportName returns a timestamped file name for /export with no path.
 func DefaultExportName(r Report) string {
-	return "helpnet-report-" + r.Timestamp.Local().Format("20060102-150405") + ".md"
+	return "nethelp-report-" + r.Timestamp.Local().Format("20060102-150405") + ".md"
 }

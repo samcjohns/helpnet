@@ -20,7 +20,7 @@ var commands = []command{
 	{"/export", "[path]", "Save the report (Markdown; .json extension → JSON)"},
 	{"/verbose", "", "Toggle details and raw output for all blocks"},
 	{"/help", "", "List commands and keys"},
-	{"/quit", "", "Exit helpnet"},
+	{"/quit", "", "Exit nethelp"},
 }
 
 // suggest returns commands matching what has been typed so far. Suggestions

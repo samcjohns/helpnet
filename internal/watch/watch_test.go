@@ -9,7 +9,7 @@ import (
 
 	mdns "github.com/miekg/dns"
 
-	"github.com/samcjohns/helpnet/internal/config"
+	"github.com/samcjohns/nethelp/internal/config"
 )
 
 func TestStartStreamsSamplesUntilDuration(t *testing.T) {

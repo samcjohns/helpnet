@@ -13,8 +13,8 @@ import (
 
 	"github.com/miekg/dns"
 
-	"github.com/samcjohns/helpnet/internal/config"
-	"github.com/samcjohns/helpnet/internal/probe"
+	"github.com/samcjohns/nethelp/internal/config"
+	"github.com/samcjohns/nethelp/internal/probe"
 )
 
 // Layer is one of the watched layers.

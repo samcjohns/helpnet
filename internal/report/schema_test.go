@@ -9,12 +9,12 @@ import (
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
-	"github.com/samcjohns/helpnet/internal/checks"
-	"github.com/samcjohns/helpnet/internal/config"
-	"github.com/samcjohns/helpnet/internal/fixtures"
-	"github.com/samcjohns/helpnet/internal/interpret"
-	"github.com/samcjohns/helpnet/internal/probe"
-	"github.com/samcjohns/helpnet/internal/sysinfo"
+	"github.com/samcjohns/nethelp/internal/checks"
+	"github.com/samcjohns/nethelp/internal/config"
+	"github.com/samcjohns/nethelp/internal/fixtures"
+	"github.com/samcjohns/nethelp/internal/interpret"
+	"github.com/samcjohns/nethelp/internal/probe"
+	"github.com/samcjohns/nethelp/internal/sysinfo"
 )
 
 func compileSchema(t *testing.T) *jsonschema.Schema {
@@ -96,11 +96,11 @@ func TestReportsMatchSchema(t *testing.T) {
 }
 
 // TestFileMatchesSchema validates a real report, e.g.
-// helpnet --json > r.json && HELPNET_REPORT=$PWD/r.json go test ./internal/report -run FileMatches
+// nethelp --json > r.json && NETHELP_REPORT=$PWD/r.json go test ./internal/report -run FileMatches
 func TestFileMatchesSchema(t *testing.T) {
-	path := os.Getenv("HELPNET_REPORT")
+	path := os.Getenv("NETHELP_REPORT")
 	if path == "" {
-		t.Skip("set HELPNET_REPORT to a JSON report file")
+		t.Skip("set NETHELP_REPORT to a JSON report file")
 	}
 	f, err := os.Open(path)
 	if err != nil {

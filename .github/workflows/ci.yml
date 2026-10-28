@@ -30,7 +30,7 @@ jobs:
         run: go test -count=1 ./...
         if: runner.os == 'Windows'
       - name: Build
-        run: go build ./cmd/helpnet
+        run: go build ./cmd/nethelp
 
   lint:
     runs-on: ubuntu-latest
@@ -44,5 +44,5 @@ jobs:
       - name: Cross-compile
         run: |
           for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64 freebsd/amd64; do
-            GOOS=${target%/*} GOARCH=${target#*/} CGO_ENABLED=0 go build -o /dev/null ./cmd/helpnet
+            GOOS=${target%/*} GOARCH=${target#*/} CGO_ENABLED=0 go build -o /dev/null ./cmd/nethelp
           done

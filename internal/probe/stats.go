@@ -1,4 +1,4 @@
-// Package probe contains the low-level network measurements helpnet uses:
+// Package probe contains the low-level network measurements nethelp uses:
 // ICMP ping, TCP connect, DNS queries, HTTP phase timing, route tracing and
 // bandwidth tests. Probes do I/O but no interpretation.
 package probe

@@ -1,9 +1,9 @@
-# helpnet
+# nethelp
 
-**Find out why your browser is slow.** Run `helpnet` when pages hang. In a few seconds you get a layered diagnosis of *where* the problem is, *what* it probably is, and *what to do about it*.
+**Find out why your browser is slow.** Run `nethelp` when pages hang. In a few seconds you get a layered diagnosis of *where* the problem is, *what* it probably is, and *what to do about it*.
 
 ```
-  helpnet   why is my browser slow?                                                  v0.1.0
+  nethelp   why is my browser slow?                                                  v0.1.0
 
   ▌ ● Local interface    wlan0 · Wi-Fi · 192.168.1.42                                    ✓
     ● Gateway            192.168.1.1 · 3.0 ms · 0% loss                                  ✓
@@ -37,25 +37,25 @@
  target: example.com · elapsed 6.1s · checks 6/6   trip ✗ · traceroute ✓ · librespeed-cli ✗
 ```
 
-helpnet is local and private. It has no accounts and no telemetry, and the only network traffic is the probes themselves. Interpretation is a deterministic rule engine with no AI or LLM. It runs on macOS, Linux and Windows without admin rights.
+nethelp is local and private. It has no accounts and no telemetry, and the only network traffic is the probes themselves. Interpretation is a deterministic rule engine with no AI or LLM. It runs on macOS, Linux and Windows without admin rights.
 
 ## Install
 
 ```sh
-go install github.com/samcjohns/helpnet/cmd/helpnet@latest
+go install github.com/samcjohns/nethelp/cmd/nethelp@latest
 ```
 
-Or download a prebuilt binary for macOS, Linux or Windows from the [releases page](https://github.com/samcjohns/helpnet/releases), or build from source:
+Or download a prebuilt binary for macOS, Linux or Windows from the [releases page](https://github.com/samcjohns/nethelp/releases), or build from source:
 
 ```sh
-git clone https://github.com/samcjohns/helpnet
-cd helpnet
+git clone https://github.com/samcjohns/nethelp
+cd nethelp
 make build
 ```
 
 ### Optional tools
 
-helpnet works without these. When one is missing, its block shows as skipped along with an install hint.
+nethelp works without these. When one is missing, its block shows as skipped along with an install hint.
 
 | Tool | Used for | Install |
 |---|---|---|
@@ -64,19 +64,19 @@ helpnet works without these. When one is missing, its block shows as skipped alo
 | [`librespeed-cli`](https://github.com/librespeed/speedtest-cli) | Bandwidth test (`--speed`, `/speed`) | `/speed -install` in the TUI, `brew install librespeed-cli`, or a release binary |
 | [Tailscale](https://tailscale.com) (`tailscale`) | Tailscale check (layer 7) | Not needed otherwise: without it the check is left out entirely rather than shown as skipped |
 
-These tools only ever run as separate processes. helpnet never bundles or redistributes them.
+These tools only ever run as separate processes. nethelp never bundles or redistributes them.
 
 ## Usage
 
 ```
-helpnet                         # launch the TUI and run the full workflow
-helpnet example.com             # use example.com as the HTTP target
-helpnet --quick                 # skip route trace and bandwidth test
-helpnet --speed                 # include the bandwidth test (off by default)
-helpnet --no-tui                # plain streaming text output, no full-screen UI
-helpnet --no-tui -v             # plain output plus every check's details and raw tool output
-helpnet --json                  # run non-interactively, print a JSON report
-helpnet --export report.md      # run and save the report (.json → JSON)
+nethelp                         # launch the TUI and run the full workflow
+nethelp example.com             # use example.com as the HTTP target
+nethelp --quick                 # skip route trace and bandwidth test
+nethelp --speed                 # include the bandwidth test (off by default)
+nethelp --no-tui                # plain streaming text output, no full-screen UI
+nethelp --no-tui -v             # plain output plus every check's details and raw tool output
+nethelp --json                  # run non-interactively, print a JSON report
+nethelp --export report.md      # run and save the report (.json → JSON)
 ```
 
 | Flag | Default | Description |
@@ -92,9 +92,9 @@ helpnet --export report.md      # run and save the report (.json → JSON)
 | `--export <path>` | — | Write the report when the run ends |
 | `--config <path>` | see below | Alternate config file |
 
-**Exit codes:** `0` all checks passed · `1` warnings · `2` failures · `3` helpnet itself errored. Skipped optional checks don't count against the result.
+**Exit codes:** `0` all checks passed · `1` warnings · `2` failures · `3` nethelp itself errored. Skipped optional checks don't count against the result.
 
-While the TUI runs, it sets the terminal tab title to the check in progress (`helpnet · DNS…`), then to the outcome (`✓ helpnet · 100/100`, `⚠ helpnet · Gateway · 72/100`). The previous title is restored on exit in terminals that support the xterm title stack.
+While the TUI runs, it sets the terminal tab title to the check in progress (`nethelp · DNS…`), then to the outcome (`✓ nethelp · 100/100`, `⚠ nethelp · Gateway · 72/100`). The previous title is restored on exit in terminals that support the xterm title stack.
 
 ### Keys
 
@@ -164,7 +164,7 @@ A probe that gets no answer within the tick (0.9 s) counts as **lost**. One that
 - **DNS only** → your DNS resolver.
 - **Only pings to the router itself** while traffic through it stayed clean → the router deprioritising pings. It's listed as harmless and not counted.
 
-If a target never answers pings, helpnet switches it to TCP probes (gateway ports 80/443/53, internet port 443) and notes the switch. The pane shows a strip per layer and the verdict so far, for example *"3 drops in 10 min, all at the gateway, so it's local Wi-Fi."*, followed by a timestamped timeline of each incident. `esc` stops early and keeps the result, and `c` copies it as text. Other checks are blocked while a watch runs, because their traffic would show up as spikes.
+If a target never answers pings, nethelp switches it to TCP probes (gateway ports 80/443/53, internet port 443) and notes the switch. The pane shows a strip per layer and the verdict so far, for example *"3 drops in 10 min, all at the gateway, so it's local Wi-Fi."*, followed by a timestamped timeline of each incident. `esc` stops early and keeps the result, and `c` copies it as text. Other checks are blocked while a watch runs, because their traffic would show up as spikes.
 
 ## How results are interpreted
 
@@ -207,27 +207,27 @@ The overall 0–100 score is a weighted mean of per-layer scores: gateway 20, in
 
 `/export` and `--export` write the conclusion, rating, statistics, all findings and per-check details, including raw tool output. Markdown is the default; a `.json` extension gives JSON. `--json` prints the same JSON to stdout.
 
-The JSON format is documented as a JSON Schema in [`docs/report-schema.json`](docs/report-schema.json) (`"schema": "helpnet.report/v1"`), and the tests validate reports against it.
+The JSON format is documented as a JSON Schema in [`docs/report-schema.json`](docs/report-schema.json) (`"schema": "nethelp.report/v1"`), and the tests validate reports against it.
 
-Reports contain network diagnostics only: a timestamp, OS, helpnet version, interface type and the measurements. They never include usernames or your machine's hostname, and proxy credentials are redacted. From Tailscale they keep only counts and capabilities: no peer names, no tailnet name, no public IP addresses, and no raw `tailscale` output.
+Reports contain network diagnostics only: a timestamp, OS, nethelp version, interface type and the measurements. They never include usernames or your machine's hostname, and proxy credentials are redacted. From Tailscale they keep only counts and capabilities: no peer names, no tailnet name, no public IP addresses, and no raw `tailscale` output.
 
 ## Configuration
 
-helpnet needs no configuration file. To override anything, create one at:
+nethelp needs no configuration file. To override anything, create one at:
 
-- macOS/Linux: `~/.config/helpnet/config.toml` (or `$XDG_CONFIG_HOME/helpnet/config.toml`)
-- Windows: `%APPDATA%\helpnet\config.toml`
+- macOS/Linux: `~/.config/nethelp/config.toml` (or `$XDG_CONFIG_HOME/nethelp/config.toml`)
+- Windows: `%APPDATA%\nethelp\config.toml`
 
 See [`docs/config.example.toml`](docs/config.example.toml) for every setting with its default. That includes all thresholds, the hosts and resolvers used, and the UI theme (`auto`/`dark`/`light`). Set `NO_COLOR=1` to disable colour.
 
 ## Privileges
 
-helpnet never needs root or admin, and it never asks for `sudo`. It prefers unprivileged in-process ICMP. When the OS doesn't allow that (Windows, or Linux without `net.ipv4.ping_group_range`), it falls back to the system `ping` and says so in the block's details. Trippy is tried in unprivileged mode first, and if that isn't permitted, helpnet falls back to `traceroute`.
+nethelp never needs root or admin, and it never asks for `sudo`. It prefers unprivileged in-process ICMP. When the OS doesn't allow that (Windows, or Linux without `net.ipv4.ping_group_range`), it falls back to the system `ping` and says so in the block's details. Trippy is tried in unprivileged mode first, and if that isn't permitted, nethelp falls back to `traceroute`.
 
 ## Development
 
 ```
-cmd/helpnet/         CLI entry point, flag parsing, plain/JSON output
+cmd/nethelp/         CLI entry point, flag parsing, plain/JSON output
 internal/checks/     the layered workflow; each check emits typed events and results
 internal/probe/      ping, TCP, DNS, HTTP timing, traceroute/Trippy, LibreSpeed, Tailscale (+ parsers)
 internal/sysinfo/    interface, gateway, VPN, proxy, Wi-Fi detection (per-OS build tags)

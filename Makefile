@@ -4,7 +4,7 @@ LDFLAGS := -s -w -X main.version=$(VERSION)
 .PHONY: build test race lint snapshots demo
 
 build:
-	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o helpnet ./cmd/helpnet
+	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o nethelp ./cmd/nethelp
 
 test:
 	go test ./...
@@ -22,4 +22,4 @@ snapshots:
 
 # Drive the TUI model against the real network and print frames.
 demo:
-	HELPNET_TUI_DEMO=1 go test ./internal/tui -run LiveDemo -v -count=1
+	NETHELP_TUI_DEMO=1 go test ./internal/tui -run LiveDemo -v -count=1

@@ -9,9 +9,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/samcjohns/helpnet/internal/checks"
-	"github.com/samcjohns/helpnet/internal/interpret"
-	"github.com/samcjohns/helpnet/internal/report"
+	"github.com/samcjohns/nethelp/internal/checks"
+	"github.com/samcjohns/nethelp/internal/interpret"
+	"github.com/samcjohns/nethelp/internal/report"
 )
 
 const routeBarWidth = 12

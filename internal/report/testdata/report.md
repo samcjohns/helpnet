@@ -1,7 +1,7 @@
-# helpnet report
+# nethelp report
 
 - **Date:** 2026-10-27 12:00:00 UTC
-- **helpnet:** 0.1.0 (linux/amd64)
+- **nethelp:** 0.1.0 (linux/amd64)
 - **Interface type:** Wi-Fi
 - **Target:** https://example.com
 - **Duration:** 12.4s

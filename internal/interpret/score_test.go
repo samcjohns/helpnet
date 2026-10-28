@@ -3,8 +3,8 @@ package interpret
 import (
 	"testing"
 
-	"github.com/samcjohns/helpnet/internal/checks"
-	"github.com/samcjohns/helpnet/internal/probe"
+	"github.com/samcjohns/nethelp/internal/checks"
+	"github.com/samcjohns/nethelp/internal/probe"
 )
 
 func TestMetricScoreCurve(t *testing.T) {

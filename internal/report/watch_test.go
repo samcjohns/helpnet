@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/samcjohns/helpnet/internal/config"
-	"github.com/samcjohns/helpnet/internal/interpret"
-	"github.com/samcjohns/helpnet/internal/watch"
+	"github.com/samcjohns/nethelp/internal/config"
+	"github.com/samcjohns/nethelp/internal/interpret"
+	"github.com/samcjohns/nethelp/internal/watch"
 )
 
 func TestWatchSummary(t *testing.T) {
@@ -21,7 +21,7 @@ func TestWatchSummary(t *testing.T) {
 	a := interpret.AnalyzeWatch(samples, false, config.DefaultThresholds())
 	got := WatchSummary(a, false)
 	for _, want := range []string{
-		"helpnet watch · 2026-10-28 14:00 · 2 min",
+		"nethelp watch · 2026-10-28 14:00 · 2 min",
 		"1 drop in 2 min, past this device, so it's beyond this device",
 		"Gateway   not measured",
 		"Internet  4 lost · median 4.0 ms",

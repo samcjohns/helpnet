@@ -28,12 +28,12 @@ var speedReleaseAPI = "https://api.github.com/repos/librespeed/speedtest-cli/rel
 const maxSpeedDownload = 64 << 20 // release archives are ~4 MB
 
 // SpeedInstallDir is where InstallSpeedTool puts librespeed-cli when no
-// package manager is used: ~/.local/bin, or %LOCALAPPDATA%\helpnet\bin on
+// package manager is used: ~/.local/bin, or %LOCALAPPDATA%\nethelp\bin on
 // Windows. No privileges are needed to write there.
 func SpeedInstallDir() string {
 	if runtime.GOOS == "windows" {
 		if d := os.Getenv("LOCALAPPDATA"); d != "" {
-			return filepath.Join(d, "helpnet", "bin")
+			return filepath.Join(d, "nethelp", "bin")
 		}
 	}
 	home, err := os.UserHomeDir()

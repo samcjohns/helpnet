@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/samcjohns/helpnet/internal/checks"
-	"github.com/samcjohns/helpnet/internal/probe"
-	"github.com/samcjohns/helpnet/internal/sysinfo"
+	"github.com/samcjohns/nethelp/internal/checks"
+	"github.com/samcjohns/nethelp/internal/probe"
+	"github.com/samcjohns/nethelp/internal/sysinfo"
 )
 
 // expect runs Analyze and checks the primary diagnosis rule and severity.

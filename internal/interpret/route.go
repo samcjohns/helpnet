@@ -3,8 +3,8 @@ package interpret
 import (
 	"strings"
 
-	"github.com/samcjohns/helpnet/internal/probe"
-	"github.com/samcjohns/helpnet/internal/sysinfo"
+	"github.com/samcjohns/nethelp/internal/probe"
+	"github.com/samcjohns/nethelp/internal/sysinfo"
 )
 
 // HopRole is a best guess at what a hop on the route is.

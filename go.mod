@@ -1,4 +1,4 @@
-module github.com/samcjohns/helpnet
+module github.com/samcjohns/nethelp
 
 go 1.27.3
 

@@ -8,9 +8,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/samcjohns/helpnet/internal/checks"
-	"github.com/samcjohns/helpnet/internal/interpret"
-	"github.com/samcjohns/helpnet/internal/report"
+	"github.com/samcjohns/nethelp/internal/checks"
+	"github.com/samcjohns/nethelp/internal/interpret"
+	"github.com/samcjohns/nethelp/internal/report"
 )
 
 const (
@@ -286,7 +286,7 @@ func (m *model) hint() string { return "/help · ctrl+c quit" }
 
 func (m *model) View() string {
 	if !m.ready {
-		return "\n  starting helpnet…"
+		return "\n  starting nethelp…"
 	}
 	t := m.theme
 	header := m.headerView()
@@ -321,7 +321,7 @@ func (m *model) View() string {
 
 func (m *model) headerView() string {
 	t := m.theme
-	left := " " + t.headerTag.Render("helpnet") + t.dim.Render("  why is my browser slow?")
+	left := " " + t.headerTag.Render("nethelp") + t.dim.Render("  why is my browser slow?")
 	ver := m.opts.Version
 	if ver != "" && ver[0] >= '0' && ver[0] <= '9' {
 		ver = "v" + ver

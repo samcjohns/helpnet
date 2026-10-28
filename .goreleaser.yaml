@@ -1,9 +1,9 @@
 version: 2
 
-project_name: helpnet
+project_name: nethelp
 
 builds:
-  - main: ./cmd/helpnet
+  - main: ./cmd/nethelp
     env:
       - CGO_ENABLED=0
     goos: [linux, darwin, windows]

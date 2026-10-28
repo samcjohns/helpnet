@@ -3,9 +3,9 @@ package interpret
 import (
 	"testing"
 
-	"github.com/samcjohns/helpnet/internal/fixtures"
-	"github.com/samcjohns/helpnet/internal/probe"
-	"github.com/samcjohns/helpnet/internal/sysinfo"
+	"github.com/samcjohns/nethelp/internal/fixtures"
+	"github.com/samcjohns/nethelp/internal/probe"
+	"github.com/samcjohns/nethelp/internal/sysinfo"
 )
 
 func named(h probe.TraceHop, name string) probe.TraceHop {

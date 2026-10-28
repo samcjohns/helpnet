@@ -6,7 +6,7 @@ import (
 	"context"
 	"os"
 
-	"github.com/samcjohns/helpnet/internal/probe"
+	"github.com/samcjohns/nethelp/internal/probe"
 )
 
 // BSDs: `route -n get default` has the same format as macOS.

@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/samcjohns/helpnet/internal/probe"
+	"github.com/samcjohns/nethelp/internal/probe"
 )
 
 // Layer 4 — HTTP phase timing.

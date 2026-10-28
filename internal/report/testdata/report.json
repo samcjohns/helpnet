@@ -1,6 +1,6 @@
 {
-  "schema": "helpnet.report/v1",
-  "helpnet_version": "0.1.0",
+  "schema": "nethelp.report/v1",
+  "nethelp_version": "0.1.0",
   "timestamp": "2026-10-27T12:00:00Z",
   "os": "linux",
   "arch": "amd64",

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/samcjohns/helpnet/internal/checks"
-	"github.com/samcjohns/helpnet/internal/config"
+	"github.com/samcjohns/nethelp/internal/checks"
+	"github.com/samcjohns/nethelp/internal/config"
 )
 
 // Rating weights. The overall score is the weighted mean of the layers that

@@ -28,9 +28,9 @@ func SpeedToolAvailable() bool { return speedToolPath() != "" }
 func SpeedInstallHint() string {
 	switch runtime.GOOS {
 	case "darwin":
-		return "run /speed -install in helpnet, or brew install librespeed-cli"
+		return "run /speed -install in nethelp, or brew install librespeed-cli"
 	default:
-		return "run /speed -install in helpnet, or get librespeed-cli from https://github.com/librespeed/speedtest-cli/releases"
+		return "run /speed -install in nethelp, or get librespeed-cli from https://github.com/librespeed/speedtest-cli/releases"
 	}
 }
 

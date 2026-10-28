@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/samcjohns/helpnet/internal/checks"
-	"github.com/samcjohns/helpnet/internal/fixtures"
-	"github.com/samcjohns/helpnet/internal/report"
+	"github.com/samcjohns/nethelp/internal/checks"
+	"github.com/samcjohns/nethelp/internal/fixtures"
+	"github.com/samcjohns/nethelp/internal/report"
 )
 
 func TestReorderArgs(t *testing.T) {
@@ -41,7 +41,7 @@ func TestParseFlags(t *testing.T) {
 }
 
 func TestBadInvocationsExit3(t *testing.T) {
-	for _, args := range [][]string{{"--bogus"}, {"a.com", "b.com"}, {"--samples", "0"}, {"--config", "/nonexistent/helpnet.toml"}} {
+	for _, args := range [][]string{{"--bogus"}, {"a.com", "b.com"}, {"--samples", "0"}, {"--config", "/nonexistent/nethelp.toml"}} {
 		if code := run(args); code != exitError {
 			t.Errorf("run(%v) = %d, want %d", args, code, exitError)
 		}

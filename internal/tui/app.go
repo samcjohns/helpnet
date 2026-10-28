@@ -1,4 +1,4 @@
-// Package tui is helpnet's full-screen terminal interface: a scrolling pane
+// Package tui is nethelp's full-screen terminal interface: a scrolling pane
 // of live check blocks and streamed findings, a command bar with slash-command
 // autocomplete, and a status line.
 package tui
@@ -18,12 +18,12 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/samcjohns/helpnet/internal/checks"
-	"github.com/samcjohns/helpnet/internal/interpret"
-	"github.com/samcjohns/helpnet/internal/probe"
-	"github.com/samcjohns/helpnet/internal/report"
-	"github.com/samcjohns/helpnet/internal/session"
-	"github.com/samcjohns/helpnet/internal/watch"
+	"github.com/samcjohns/nethelp/internal/checks"
+	"github.com/samcjohns/nethelp/internal/interpret"
+	"github.com/samcjohns/nethelp/internal/probe"
+	"github.com/samcjohns/nethelp/internal/report"
+	"github.com/samcjohns/nethelp/internal/session"
+	"github.com/samcjohns/nethelp/internal/watch"
 )
 
 // Options configures the TUI.
@@ -223,7 +223,7 @@ func waitFor(run int, ch <-chan session.Update) tea.Cmd {
 }
 
 // shutdown cancels any run and drains it so subprocesses are killed before
-// helpnet exits. Bounded so quitting always completes within a second.
+// nethelp exits. Bounded so quitting always completes within a second.
 func (m *model) shutdown() {
 	if m.cancel != nil {
 		m.cancel()

@@ -1,4 +1,4 @@
-// Command helpnet diagnoses why web browsing is slow: it tests the network
+// Command nethelp diagnoses why web browsing is slow: it tests the network
 // layer by layer and explains where the bottleneck is.
 package main
 
@@ -16,11 +16,11 @@ import (
 
 	"github.com/mattn/go-isatty"
 
-	"github.com/samcjohns/helpnet/internal/checks"
-	"github.com/samcjohns/helpnet/internal/config"
-	"github.com/samcjohns/helpnet/internal/report"
-	"github.com/samcjohns/helpnet/internal/session"
-	"github.com/samcjohns/helpnet/internal/tui"
+	"github.com/samcjohns/nethelp/internal/checks"
+	"github.com/samcjohns/nethelp/internal/config"
+	"github.com/samcjohns/nethelp/internal/report"
+	"github.com/samcjohns/nethelp/internal/session"
+	"github.com/samcjohns/nethelp/internal/tui"
 )
 
 // version is overridden at release time with -ldflags "-X main.version=…".
@@ -43,20 +43,20 @@ type cliFlags struct {
 	set        map[string]bool // flags given explicitly
 }
 
-const usage = `helpnet — find out why your browser is slow
+const usage = `nethelp — find out why your browser is slow
 
 Usage:
-  helpnet [flags] [url]
+  nethelp [flags] [url]
 
 Examples:
-  helpnet                         launch the TUI and run the full workflow
-  helpnet example.com             use example.com as the HTTP target
-  helpnet --quick                 skip route trace and bandwidth test
-  helpnet --speed                 include the bandwidth test
-  helpnet --no-tui                plain streaming text output
-  helpnet --no-tui -v             plain output with every check's details
-  helpnet --json                  print a JSON report to stdout
-  helpnet --export report.md      run and save the report (.json for JSON)
+  nethelp                         launch the TUI and run the full workflow
+  nethelp example.com             use example.com as the HTTP target
+  nethelp --quick                 skip route trace and bandwidth test
+  nethelp --speed                 include the bandwidth test
+  nethelp --no-tui                plain streaming text output
+  nethelp --no-tui -v             plain output with every check's details
+  nethelp --json                  print a JSON report to stdout
+  nethelp --export report.md      run and save the report (.json for JSON)
 
 Flags:
   -t, --target <url>     HTTP timing target (default https://www.google.com)
@@ -72,7 +72,7 @@ Flags:
       --version          print the version
   -h, --help             show this help
 
-Exit codes: 0 all checks passed · 1 warnings · 2 failures · 3 helpnet error
+Exit codes: 0 all checks passed · 1 warnings · 2 failures · 3 nethelp error
 `
 
 // valueFlags lists flags that take an argument, so positional arguments can
@@ -105,7 +105,7 @@ func reorderArgs(args []string) []string {
 
 func parseFlags(args []string, stderr io.Writer) (cliFlags, []string, error) {
 	var f cliFlags
-	fs := flag.NewFlagSet("helpnet", flag.ContinueOnError)
+	fs := flag.NewFlagSet("nethelp", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	fs.StringVar(&f.target, "target", "", "")
 	fs.StringVar(&f.target, "t", "", "")
@@ -139,15 +139,15 @@ func run(args []string) int {
 		return 0
 	}
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "helpnet: %v\nRun 'helpnet --help' for usage.\n", err)
+		fmt.Fprintf(os.Stderr, "nethelp: %v\nRun 'nethelp --help' for usage.\n", err)
 		return exitError
 	}
 	if f.version {
-		fmt.Println("helpnet", version)
+		fmt.Println("nethelp", version)
 		return 0
 	}
 	if len(pos) > 1 {
-		fmt.Fprintf(os.Stderr, "helpnet: expected at most one URL, got %d\n", len(pos))
+		fmt.Fprintf(os.Stderr, "nethelp: expected at most one URL, got %d\n", len(pos))
 		return exitError
 	}
 
@@ -157,7 +157,7 @@ func run(args []string) int {
 	}
 	cfg, err := config.Load(cfgPath, explicit)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "helpnet: %v\n", err)
+		fmt.Fprintf(os.Stderr, "nethelp: %v\n", err)
 		return exitError
 	}
 	if f.set["samples"] || f.set["n"] {
@@ -167,7 +167,7 @@ func run(args []string) int {
 		cfg.Timeout.Duration = f.timeout
 	}
 	if err := cfg.Validate(); err != nil {
-		fmt.Fprintf(os.Stderr, "helpnet: %v\n", err)
+		fmt.Fprintf(os.Stderr, "nethelp: %v\n", err)
 		return exitError
 	}
 	target := cfg.Target
@@ -200,7 +200,7 @@ func run(args []string) int {
 		var err error
 		rep, err = tui.Run(tui.Options{Params: params, Theme: cfg.UI.Theme, Version: version, ExportPath: f.export, Verbose: f.verbose})
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "helpnet: %v\n", err)
+			fmt.Fprintf(os.Stderr, "nethelp: %v\n", err)
 			return exitError
 		}
 		if rep == nil {
@@ -212,7 +212,7 @@ func run(args []string) int {
 	}
 	if f.export != "" {
 		if err := report.Export(*rep, f.export); err != nil {
-			fmt.Fprintf(os.Stderr, "helpnet: export failed: %v\n", err)
+			fmt.Fprintf(os.Stderr, "nethelp: export failed: %v\n", err)
 			return exitError
 		}
 		if !f.json {
@@ -234,7 +234,7 @@ func runJSON(ctx context.Context, p session.Params) *report.Report {
 	}
 	data, err := report.JSON(*rep)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "helpnet: %v\n", err)
+		fmt.Fprintf(os.Stderr, "nethelp: %v\n", err)
 		return nil
 	}
 	os.Stdout.Write(data)

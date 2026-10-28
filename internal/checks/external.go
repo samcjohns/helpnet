@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/samcjohns/helpnet/internal/probe"
+	"github.com/samcjohns/nethelp/internal/probe"
 )
 
 // Layer 5 — route trace via Trippy or the OS traceroute.

@@ -6,11 +6,11 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/samcjohns/helpnet/internal/checks"
-	"github.com/samcjohns/helpnet/internal/interpret"
+	"github.com/samcjohns/nethelp/internal/checks"
+	"github.com/samcjohns/nethelp/internal/interpret"
 )
 
-// XTWINOPS title stack: save the terminal's title before helpnet changes it
+// XTWINOPS title stack: save the terminal's title before nethelp changes it
 // and restore it on exit. Terminals without a title stack ignore these.
 const (
 	pushTitle = "\x1b[22;0t"
@@ -27,28 +27,28 @@ func (m *model) windowTitle() string {
 	if m.active {
 		for _, id := range checks.Order {
 			if m.running[id] {
-				return "helpnet · " + id.Title() + "…"
+				return "nethelp · " + id.Title() + "…"
 			}
 		}
-		return "helpnet · running…"
+		return "nethelp · running…"
 	}
 	r := m.report
 	if r == nil {
-		return "helpnet"
+		return "nethelp"
 	}
 	if !r.Complete {
-		return "helpnet · stopped"
+		return "nethelp · stopped"
 	}
 	if r.Primary == nil {
-		return "helpnet · " + r.Rating.Grade
+		return "nethelp · " + r.Rating.Grade
 	}
 	switch r.Primary.Severity {
 	case interpret.Fail:
-		return fmt.Sprintf("✗ helpnet · %s · %d/100", r.Primary.Layer.Title(), r.Rating.Score)
+		return fmt.Sprintf("✗ nethelp · %s · %d/100", r.Primary.Layer.Title(), r.Rating.Score)
 	case interpret.Warn:
-		return fmt.Sprintf("⚠ helpnet · %s · %d/100", r.Primary.Layer.Title(), r.Rating.Score)
+		return fmt.Sprintf("⚠ nethelp · %s · %d/100", r.Primary.Layer.Title(), r.Rating.Score)
 	}
-	return fmt.Sprintf("✓ helpnet · %d/100", r.Rating.Score)
+	return fmt.Sprintf("✓ nethelp · %d/100", r.Rating.Score)
 }
 
 // titleCmd returns a command that updates the terminal title if it changed.

@@ -12,12 +12,12 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/samcjohns/helpnet/internal/checks"
-	"github.com/samcjohns/helpnet/internal/config"
-	"github.com/samcjohns/helpnet/internal/fixtures"
-	"github.com/samcjohns/helpnet/internal/interpret"
-	"github.com/samcjohns/helpnet/internal/probe"
-	"github.com/samcjohns/helpnet/internal/session"
+	"github.com/samcjohns/nethelp/internal/checks"
+	"github.com/samcjohns/nethelp/internal/config"
+	"github.com/samcjohns/nethelp/internal/fixtures"
+	"github.com/samcjohns/nethelp/internal/interpret"
+	"github.com/samcjohns/nethelp/internal/probe"
+	"github.com/samcjohns/nethelp/internal/session"
 )
 
 const termW, termH = 100, 40
@@ -128,7 +128,7 @@ func TestViewAfterHealthyRun(t *testing.T) {
 	m.vp.GotoTop()
 	view := m.View()
 	assertFits(t, view)
-	for _, want := range []string{"helpnet", "Local interface", "wlan0 · Wi-Fi · 192.168.1.42", "Gateway", "192.168.1.1 · 3.0 ms · 0% loss", "✓", "/help · ctrl+c quit", "target: example.com", "checks 6/6", "optional · /speed to run"} {
+	for _, want := range []string{"nethelp", "Local interface", "wlan0 · Wi-Fi · 192.168.1.42", "Gateway", "192.168.1.1 · 3.0 ms · 0% loss", "✓", "/help · ctrl+c quit", "target: example.com", "checks 6/6", "optional · /speed to run"} {
 		if !strings.Contains(view, want) {
 			t.Errorf("view missing %q\n%s", want, view)
 		}
@@ -318,10 +318,10 @@ func TestNarrowTerminalStillFits(t *testing.T) {
 }
 
 // TestLiveDemo drives the real TUI model against the network and prints
-// frames. Run with HELPNET_TUI_DEMO=1 go test ./internal/tui -run LiveDemo -v
+// frames. Run with NETHELP_TUI_DEMO=1 go test ./internal/tui -run LiveDemo -v
 func TestLiveDemo(t *testing.T) {
-	if os.Getenv("HELPNET_TUI_DEMO") == "" {
-		t.Skip("set HELPNET_TUI_DEMO=1")
+	if os.Getenv("NETHELP_TUI_DEMO") == "" {
+		t.Skip("set NETHELP_TUI_DEMO=1")
 	}
 	m := newModel(Options{Params: baseParams(), Version: "0.1.0"})
 	m.base.Opts.Target = "https://www.google.com"
@@ -377,19 +377,19 @@ func TestLiveDemo(t *testing.T) {
 func TestWindowTitle(t *testing.T) {
 	m := newModel(Options{Params: baseParams()})
 	m.active, m.running = true, map[checks.ID]bool{checks.DNS: true, checks.HTTP: true}
-	if got := m.windowTitle(); got != "helpnet · DNS…" {
+	if got := m.windowTitle(); got != "nethelp · DNS…" {
 		t.Errorf("running title = %q", got)
 	}
 	if m.titleCmd() == nil || m.titleCmd() != nil {
 		t.Error("titleCmd should fire once per change")
 	}
 
-	if got := fixtureModel(t, fixtures.Healthy()).windowTitle(); got != "✓ helpnet · 100/100" {
+	if got := fixtureModel(t, fixtures.Healthy()).windowTitle(); got != "✓ nethelp · 100/100" {
 		t.Errorf("healthy title = %q", got)
 	}
 	r := fixtures.Healthy()
 	r.DNS.Resolvers[0] = fixtures.Resolver("192.168.1.1", true, 412)
-	if got := fixtureModel(t, r).windowTitle(); !strings.HasPrefix(got, "✗ helpnet · DNS · ") {
+	if got := fixtureModel(t, r).windowTitle(); !strings.HasPrefix(got, "✗ nethelp · DNS · ") {
 		t.Errorf("DNS failure title = %q", got)
 	}
 }

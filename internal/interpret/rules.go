@@ -5,10 +5,10 @@ import (
 	"math"
 	"strings"
 
-	"github.com/samcjohns/helpnet/internal/checks"
-	"github.com/samcjohns/helpnet/internal/config"
-	"github.com/samcjohns/helpnet/internal/probe"
-	"github.com/samcjohns/helpnet/internal/sysinfo"
+	"github.com/samcjohns/nethelp/internal/checks"
+	"github.com/samcjohns/nethelp/internal/config"
+	"github.com/samcjohns/nethelp/internal/probe"
+	"github.com/samcjohns/nethelp/internal/sysinfo"
 )
 
 // Rule identifiers, one per kind of finding.
@@ -175,7 +175,7 @@ func (a *analysis) localRules() {
 		a.add(Finding{Rule: RuleNoNetwork, Severity: Fail, Layer: checks.Local, Confidence: High,
 			Title:      "No network connection",
 			Evidence:   ev,
-			Suggestion: "Check that Wi-Fi is turned on and connected, or that the Ethernet cable is plugged in. Then run helpnet again.",
+			Suggestion: "Check that Wi-Fi is turned on and connected, or that the Ethernet cable is plugged in. Then run nethelp again.",
 		})
 		return
 	}
@@ -218,7 +218,7 @@ func (a *analysis) localRules() {
 			a.add(Finding{Rule: RuleVPNLatency, Severity: Warn, Layer: checks.Local, Confidence: Medium,
 				Title:      "Your VPN may be adding latency",
 				Evidence:   fmt.Sprintf("Internet traffic is routed through %s and latency beyond your router is elevated%s.", names, a.internetEvidenceSuffix()),
-				Suggestion: "Run helpnet again with the VPN disconnected to compare, or pick a closer VPN server.",
+				Suggestion: "Run nethelp again with the VPN disconnected to compare, or pick a closer VPN server.",
 			})
 		} else {
 			a.add(Finding{Rule: RuleVPNActive, Severity: Info, Layer: checks.Local, Confidence: High,

@@ -8,13 +8,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/samcjohns/helpnet/internal/checks"
-	"github.com/samcjohns/helpnet/internal/config"
-	"github.com/samcjohns/helpnet/internal/interpret"
+	"github.com/samcjohns/nethelp/internal/checks"
+	"github.com/samcjohns/nethelp/internal/config"
+	"github.com/samcjohns/nethelp/internal/interpret"
 )
 
 // SchemaVersion identifies the JSON report format (documented in docs/report-schema.json).
-const SchemaVersion = "helpnet.report/v1"
+const SchemaVersion = "nethelp.report/v1"
 
 type Conclusion struct {
 	Headline   string             `json:"headline"`
@@ -47,7 +47,7 @@ type CheckReport struct {
 
 type Report struct {
 	Schema        string              `json:"schema"`
-	Version       string              `json:"helpnet_version"`
+	Version       string              `json:"nethelp_version"`
 	Timestamp     time.Time           `json:"timestamp"`
 	OS            string              `json:"os"`
 	Arch          string              `json:"arch"`

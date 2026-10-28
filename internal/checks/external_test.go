@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/samcjohns/helpnet/internal/config"
-	"github.com/samcjohns/helpnet/internal/sysinfo"
+	"github.com/samcjohns/nethelp/internal/config"
+	"github.com/samcjohns/nethelp/internal/sysinfo"
 )
 
 // fakeTools puts shell-script stand-ins for external tools first on PATH.
@@ -21,6 +21,8 @@ func fakeTools(t *testing.T, scripts map[string]string) {
 		t.Skip("fake tools are shell scripts")
 	}
 	dir := t.TempDir()
+	// Tools are also looked up in probe.SpeedInstallDir (~/.local/bin).
+	t.Setenv("HOME", dir)
 	for name, body := range scripts {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte("#!/bin/sh\n"+body), 0o755); err != nil {
 			t.Fatal(err)

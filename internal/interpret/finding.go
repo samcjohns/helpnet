@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/samcjohns/helpnet/internal/checks"
+	"github.com/samcjohns/nethelp/internal/checks"
 )
 
 type Severity int

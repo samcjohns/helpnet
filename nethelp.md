@@ -1,6 +1,6 @@
-# helpnet — Product Specification
+# nethelp — Product Specification
 
-> A local, open-source network diagnostic tool with an interactive terminal UI. Run `helpnet` when your browser is slow or pages hang, and within ~30 seconds get a layered diagnosis of *where* the problem is, *what* it probably is, and *what to do about it*.
+> A local, open-source network diagnostic tool with an interactive terminal UI. Run `nethelp` when your browser is slow or pages hang, and within ~30 seconds get a layered diagnosis of *where* the problem is, *what* it probably is, and *what to do about it*.
 
 ---
 
@@ -8,11 +8,11 @@
 
 When a browser loads slowly, it rarely says why. The cause could be Wi-Fi, the router, the ISP, DNS, a VPN or proxy, the remote server, or raw bandwidth — and each requires a different fix. Existing tools (ping, traceroute, dig, speed tests, browser DevTools) each answer one piece of the question, require knowing which to run, and leave interpretation to the user.
 
-**helpnet** runs the right checks in the right order, interprets the results, and explains the likely bottleneck in plain English.
+**nethelp** runs the right checks in the right order, interprets the results, and explains the likely bottleneck in plain English.
 
 ## 2. Goals
 
-1. **One command.** `helpnet` launches the TUI and starts the diagnostic workflow immediately.
+1. **One command.** `nethelp` launches the TUI and starts the diagnostic workflow immediately.
 2. **Layered diagnosis.** Test from closest to farthest (machine → gateway → internet → DNS → HTTP → bandwidth) so the first failing layer identifies the problem.
 3. **Interpretation, not just numbers.** A rule-based engine turns raw results into findings ("DNS is slow: 420 ms average via your router's resolver") with suggested fixes.
 4. **Final summary.** Every run ends with a conclusion, statistics, and a performance rating.
@@ -24,7 +24,7 @@ When a browser loads slowly, it rarely says why. The cause could be Wi-Fi, the r
 
 - Continuous background monitoring or historical dashboards (possible future feature).
 - Packet capture or deep protocol analysis (that's Wireshark's job).
-- Automatically changing system settings (helpnet suggests fixes; it never applies them).
+- Automatically changing system settings (nethelp suggests fixes; it never applies them).
 - Managing multiple machines or a network fleet.
 
 ---
@@ -40,7 +40,7 @@ Study OpenCode's layout, interaction patterns, and visual language. Do not copy 
 ### 4.2 Layout
 
 ```
-┌─ helpnet ─────────────────────────────────────────── v0.1.0 ─┐
+┌─ nethelp ─────────────────────────────────────────── v0.1.0 ─┐
 │                                                              │
 │  ● Local interface      en0 · Wi-Fi · 192.168.1.42     ✓     │
 │  ● Gateway              192.168.1.1 · 3.1 ms · 0% loss ✓     │
@@ -104,15 +104,15 @@ Include command autocomplete with a small popup, as OpenCode does.
 ## 5. Command-Line Interface
 
 ```
-helpnet                         # launch TUI and run the full workflow
-helpnet <url>                   # same, using <url> as the HTTP target
-helpnet --quick                 # skip route trace and bandwidth test
-helpnet --speed                 # include the bandwidth test (off by default)
-helpnet --no-tui                # plain streaming text output, no full-screen UI
-helpnet --json                  # run non-interactively, print JSON report to stdout
-helpnet --export report.md      # run and save the report
-helpnet --version
-helpnet --help
+nethelp                         # launch TUI and run the full workflow
+nethelp <url>                   # same, using <url> as the HTTP target
+nethelp --quick                 # skip route trace and bandwidth test
+nethelp --speed                 # include the bandwidth test (off by default)
+nethelp --no-tui                # plain streaming text output, no full-screen UI
+nethelp --json                  # run non-interactively, print JSON report to stdout
+nethelp --export report.md      # run and save the report
+nethelp --version
+nethelp --help
 ```
 
 Flags:
@@ -129,7 +129,7 @@ Flags:
 | `--export <path>` | — | Write report file at end of run |
 | `--config <path>` | see §9 | Alternate config file |
 
-Exit codes: `0` all checks passed, `1` warnings found, `2` failures found, `3` helpnet itself errored.
+Exit codes: `0` all checks passed, `1` warnings found, `2` failures found, `3` nethelp itself errored.
 
 ---
 
@@ -282,7 +282,7 @@ An overall score from 0–100 plus a grade (Excellent / Good / Fair / Poor / Dow
 
 ### 8.4 Report export
 
-`/export` and `--export` write the summary, all findings, and per-check details (including raw tool output) to Markdown or JSON. Include a timestamp, OS, helpnet version, and interface type. Never include anything beyond network diagnostics (no usernames, hostnames are optional and off by default).
+`/export` and `--export` write the summary, all findings, and per-check details (including raw tool output) to Markdown or JSON. Include a timestamp, OS, nethelp version, and interface type. Never include anything beyond network diagnostics (no usernames, hostnames are optional and off by default).
 
 ---
 
@@ -290,8 +290,8 @@ An overall score from 0–100 plus a grade (Excellent / Good / Fair / Poor / Dow
 
 Optional file at:
 
-- macOS/Linux: `~/.config/helpnet/config.toml`
-- Windows: `%APPDATA%\helpnet\config.toml`
+- macOS/Linux: `~/.config/nethelp/config.toml`
+- Windows: `%APPDATA%\nethelp\config.toml`
 
 ```toml
 target = "https://www.google.com"
@@ -312,7 +312,7 @@ dns_fail_ms = 300
 theme = "auto"   # auto | dark | light
 ```
 
-All settings must have sensible defaults; helpnet must work with no config file.
+All settings must have sensible defaults; nethelp must work with no config file.
 
 ---
 
@@ -332,7 +332,7 @@ If you have a strong reason to choose differently (e.g., Python + Textual), expl
 ### 10.2 Architecture
 
 ```
-cmd/helpnet/            main, flag parsing
+cmd/nethelp/            main, flag parsing
 internal/checks/        one package per layer; each implements a Check interface
 internal/probe/         low-level ping, DNS, HTTP, traceroute, speed wrappers
 internal/sysinfo/       interface, gateway, VPN, proxy, Wi-Fi detection (per-OS files)
@@ -351,7 +351,7 @@ Key design rules:
 
 ### 10.3 Privileges
 
-helpnet must run without admin/root. When a probe needs privileges it doesn't have, use the fallback and note it in the block's details. Never prompt for `sudo`.
+nethelp must run without admin/root. When a probe needs privileges it doesn't have, use the fallback and note it in the block's details. Never prompt for `sudo`.
 
 ---
 
@@ -380,11 +380,11 @@ Complete and test each milestone before moving to the next.
 
 ## 13. Acceptance Criteria
 
-- Running `helpnet` with no arguments on a healthy connection completes the default workflow (excluding bandwidth) in under 30 seconds and reports "healthy."
+- Running `nethelp` with no arguments on a healthy connection completes the default workflow (excluding bandwidth) in under 30 seconds and reports "healthy."
 - Pointing the system resolver at a deliberately slow DNS server produces a primary diagnosis of slow DNS with a suggestion to switch resolvers.
 - Disconnecting from the network produces a clear "no network connection" conclusion within the timeout, with downstream checks marked skipped rather than erroring.
-- On a network that blocks ICMP, helpnet does not report the internet as down when TCP 443 succeeds.
-- `helpnet --json` produces valid JSON matching a documented schema.
+- On a network that blocks ICMP, nethelp does not report the internet as down when TCP 443 succeeds.
+- `nethelp --json` produces valid JSON matching a documented schema.
 - Missing optional tools (`trip`, `librespeed-cli`) never cause errors; their blocks show as skipped with install hints.
 - Works without admin/root on macOS, Linux, and Windows.
 - `q` or `ctrl+c` exits within one second, terminating all subprocesses.
@@ -393,6 +393,6 @@ Complete and test each milestone before moving to the next.
 
 ## 14. Licensing
 
-- helpnet is released under MIT or Apache-2.0.
-- Third-party CLIs (Trippy: Apache-2.0; LibreSpeed CLI: LGPL-3.0; system traceroute) are invoked as separate processes only and are never bundled or redistributed with helpnet.
+- nethelp is released under MIT or Apache-2.0.
+- Third-party CLIs (Trippy: Apache-2.0; LibreSpeed CLI: LGPL-3.0; system traceroute) are invoked as separate processes only and are never bundled or redistributed with nethelp.
 - Verify the licenses of all Go dependencies are compatible before release.

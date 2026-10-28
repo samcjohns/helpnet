@@ -1,6 +1,6 @@
-/helpnet
-/helpnet.exe
+/nethelp
+/nethelp.exe
 /dist/
-helpnet-report-*.md
+nethelp-report-*.md
 *.test
 *.out

@@ -7,8 +7,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/samcjohns/helpnet/internal/fixtures"
-	"github.com/samcjohns/helpnet/internal/watch"
+	"github.com/samcjohns/nethelp/internal/fixtures"
+	"github.com/samcjohns/nethelp/internal/watch"
 )
 
 func TestParseWatchDuration(t *testing.T) {

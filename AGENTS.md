@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Guidance for AI agents (and humans) working on helpnet. Read `README.md` for what the tool does and `helpnet.md` for the original product spec. This file covers what neither of them says: design rules, deliberate deviations from the spec, test hooks and known gaps.
+Guidance for AI agents (and humans) working on nethelp. Read `README.md` for what the tool does and `nethelp.md` for the original product spec. This file covers what neither of them says: design rules, deliberate deviations from the spec, test hooks and known gaps.
 
 ## Quick start
 
@@ -8,15 +8,15 @@ Guidance for AI agents (and humans) working on helpnet. Read `README.md` for wha
 make test        # all tests (unit, parser, snapshot, localhost integration)
 make race        # same with -race — run before finishing any change
 make lint        # go vet + gofmt check
-go run ./cmd/helpnet            # TUI against the real network
-go run ./cmd/helpnet --no-tui   # plain output; easiest way to eyeball a change
+go run ./cmd/nethelp            # TUI against the real network
+go run ./cmd/nethelp --no-tui   # plain output; easiest way to eyeball a change
 ```
 
-Go module: `github.com/samcjohns/helpnet`. Go version comes from `go.mod`. No cgo; release builds use `CGO_ENABLED=0`.
+Go module: `github.com/samcjohns/nethelp`. Go version comes from `go.mod`. No cgo; release builds use `CGO_ENABLED=0`.
 
 ## Architecture in one paragraph
 
-`checks.Run` executes the layers in order (`local → gateway → internet → dns → http → trace → speed → tailscale`; the plan decides which run) and emits `checks.Event`s. `session.Start` wraps it. After every finished check it takes a snapshot of the results and re-runs `interpret.Analyze` on it, so findings stream in as soon as their inputs exist. It sends `session.Update`s on a channel and finishes with a `report.Report`. Every frontend consumes that same stream: the TUI (`internal/tui`), plain text (`cmd/helpnet/plain.go`) and JSON (`cmd/helpnet/main.go`). `report` turns results and findings into the conclusion, statistics, rating and the Markdown/JSON/text output.
+`checks.Run` executes the layers in order (`local → gateway → internet → dns → http → trace → speed → tailscale`; the plan decides which run) and emits `checks.Event`s. `session.Start` wraps it. After every finished check it takes a snapshot of the results and re-runs `interpret.Analyze` on it, so findings stream in as soon as their inputs exist. It sends `session.Update`s on a channel and finishes with a `report.Report`. Every frontend consumes that same stream: the TUI (`internal/tui`), plain text (`cmd/nethelp/plain.go`) and JSON (`cmd/nethelp/main.go`). `report` turns results and findings into the conclusion, statistics, rating and the Markdown/JSON/text output.
 
 ## Rules to preserve
 
@@ -28,7 +28,7 @@ Go module: `github.com/samcjohns/helpnet`. Go version comes from `go.mod`. No cg
 - **Per-OS code goes behind build tags** (`sysinfo_<os>.go`). Put text parsers in OS-neutral files (`sysinfo/parse.go`, `probe/*.go`) so they can be tested on any platform.
 - **Privacy:** reports contain network diagnostics only. No username or machine hostname; proxy credentials are redacted (`sysinfo.RedactProxy`). The same goes for other machines: no Tailscale peer names, tailnet name or public addresses, and no raw `tailscale` output in `Raw`. Test fixtures must not contain real public IPs; use RFC 5737 ranges (192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24), plus made-up 100.64.0.0/10 addresses for CGNAT and tailnet cases.
 
-## Deliberate deviations from `helpnet.md` — do not "fix" these
+## Deliberate deviations from `nethelp.md` — do not "fix" these
 
 1. **Gateway unreachable does not skip downstream checks.** Many routers ignore ICMP, so skipping would misdiagnose working networks. Only *no network* (local check errors) or *internet unreachable* (no ping **and** no TCP 443 to any host) skips later layers. A detected captive portal does not skip them. See `checks.blockedBy`.
 2. **Extra rule: router deprioritises pings to itself.** If loss or latency to the gateway is bad but traffic *through* it to the internet is clean, this is reported as harmless info and excluded from scoring (`gatewayDeprioritized`). For the same reason, gateway findings wait until the internet check has a state (`gatewayReady`), so they appear slightly later in the stream.
@@ -61,8 +61,8 @@ Go module: `github.com/samcjohns/helpnet`. Go version comes from `go.mod`. No cg
 | `checks.Options.SystemResolver` | Query a given DNS server in place of the OS resolver path |
 | `checks.Options.TLSConfig` | Trust a self-signed `httptest` server |
 | `go test ./internal/report -update` | Regenerate golden `report.md` / `report.json` |
-| `HELPNET_TUI_DEMO=1 go test ./internal/tui -run LiveDemo -v` | Drive the real TUI model against the network and print frames (`make demo`) |
-| `HELPNET_REPORT=/abs/path.json go test ./internal/report -run FileMatches` | Validate any real `--json` output against the schema |
+| `NETHELP_TUI_DEMO=1 go test ./internal/tui -run LiveDemo -v` | Drive the real TUI model against the network and print frames (`make demo`) |
+| `NETHELP_REPORT=/abs/path.json go test ./internal/report -run FileMatches` | Validate any real `--json` output against the schema |
 | `watch.Options.Probe` | Replace the per-layer measurement in watch mode; `tui/watch_test.go` feeds `watchMsg`s directly instead |
 | Fake tools on `PATH` | `checks/external_test.go` shows how to stand in for `trip` / `traceroute` / `librespeed-cli` with shell scripts |
 

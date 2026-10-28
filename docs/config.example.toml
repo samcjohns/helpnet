@@ -1,13 +1,13 @@
-# helpnet configuration — every setting is optional.
+# nethelp configuration — every setting is optional.
 #
 # Location:
-#   macOS/Linux: ~/.config/helpnet/config.toml  (or $XDG_CONFIG_HOME/helpnet/config.toml)
-#   Windows:     %APPDATA%\helpnet\config.toml
+#   macOS/Linux: ~/.config/nethelp/config.toml  (or $XDG_CONFIG_HOME/nethelp/config.toml)
+#   Windows:     %APPDATA%\nethelp\config.toml
 # Or pass --config <path>.
 #
 # The values below are the built-in defaults.
 
-target = "https://www.google.com"   # HTTP timing target (overridden by `helpnet <url>`)
+target = "https://www.google.com"   # HTTP timing target (overridden by `nethelp <url>`)
 samples = 10                        # ping samples per host (1–100)
 timeout = "3s"                      # per-probe timeout
 

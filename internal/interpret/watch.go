@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/samcjohns/helpnet/internal/config"
-	"github.com/samcjohns/helpnet/internal/watch"
+	"github.com/samcjohns/nethelp/internal/config"
+	"github.com/samcjohns/nethelp/internal/watch"
 )
 
 // WatchCause is where an incident in watch mode most likely came from.

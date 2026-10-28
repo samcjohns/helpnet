@@ -11,12 +11,12 @@ import (
 
 	"github.com/miekg/dns"
 
-	"github.com/samcjohns/helpnet/internal/checks"
-	"github.com/samcjohns/helpnet/internal/config"
-	"github.com/samcjohns/helpnet/internal/interpret"
-	"github.com/samcjohns/helpnet/internal/probe"
-	"github.com/samcjohns/helpnet/internal/report"
-	"github.com/samcjohns/helpnet/internal/sysinfo"
+	"github.com/samcjohns/nethelp/internal/checks"
+	"github.com/samcjohns/nethelp/internal/config"
+	"github.com/samcjohns/nethelp/internal/interpret"
+	"github.com/samcjohns/nethelp/internal/probe"
+	"github.com/samcjohns/nethelp/internal/report"
+	"github.com/samcjohns/nethelp/internal/sysinfo"
 )
 
 // startDNS runs a local DNS server that answers every A query with
@@ -68,7 +68,7 @@ func newEnv(t *testing.T, systemDNSDelay time.Duration) env {
 	cfg.Timeout.Duration = time.Second
 	cfg.Hosts.Internet = []string{"127.0.0.1"}
 	cfg.Hosts.DNSPublic = []string{startDNS(t, 0)}
-	cfg.Hosts.DNSTestDomains = []string{"example.test", "helpnet.test"}
+	cfg.Hosts.DNSTestDomains = []string{"example.test", "nethelp.test"}
 	cfg.Hosts.CaptiveURL = captive.URL
 
 	return env{params: Params{

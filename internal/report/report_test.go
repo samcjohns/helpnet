@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/samcjohns/helpnet/internal/checks"
-	"github.com/samcjohns/helpnet/internal/config"
-	"github.com/samcjohns/helpnet/internal/fixtures"
-	"github.com/samcjohns/helpnet/internal/interpret"
+	"github.com/samcjohns/nethelp/internal/checks"
+	"github.com/samcjohns/nethelp/internal/config"
+	"github.com/samcjohns/nethelp/internal/fixtures"
+	"github.com/samcjohns/nethelp/internal/interpret"
 )
 
 var update = flag.Bool("update", false, "rewrite golden files")
@@ -70,7 +70,7 @@ func TestJSONRoundTripsAndHasSchemaFields(t *testing.T) {
 	if err := json.Unmarshal(data, &m); err != nil {
 		t.Fatalf("invalid JSON: %v", err)
 	}
-	for _, k := range []string{"schema", "helpnet_version", "timestamp", "os", "interface_type", "conclusion", "primary_diagnosis", "rating", "statistics", "findings", "checks", "results", "exit_code"} {
+	for _, k := range []string{"schema", "nethelp_version", "timestamp", "os", "interface_type", "conclusion", "primary_diagnosis", "rating", "statistics", "findings", "checks", "results", "exit_code"} {
 		if _, ok := m[k]; !ok {
 			t.Errorf("missing top-level field %q", k)
 		}
@@ -120,7 +120,7 @@ func TestExportPicksFormatByExtension(t *testing.T) {
 	}
 	j, _ := os.ReadFile(filepath.Join(dir, "r.json"))
 	m, _ := os.ReadFile(filepath.Join(dir, "sub", "r.md"))
-	if !json.Valid(j) || !strings.HasPrefix(string(m), "# helpnet report") {
+	if !json.Valid(j) || !strings.HasPrefix(string(m), "# nethelp report") {
 		t.Error("export wrote the wrong formats")
 	}
 }

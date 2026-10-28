@@ -11,10 +11,10 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/samcjohns/helpnet/internal/interpret"
-	"github.com/samcjohns/helpnet/internal/report"
-	"github.com/samcjohns/helpnet/internal/sysinfo"
-	"github.com/samcjohns/helpnet/internal/watch"
+	"github.com/samcjohns/nethelp/internal/interpret"
+	"github.com/samcjohns/nethelp/internal/report"
+	"github.com/samcjohns/nethelp/internal/sysinfo"
+	"github.com/samcjohns/nethelp/internal/watch"
 )
 
 const (

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/samcjohns/helpnet/internal/interpret"
-	"github.com/samcjohns/helpnet/internal/watch"
+	"github.com/samcjohns/nethelp/internal/interpret"
+	"github.com/samcjohns/nethelp/internal/watch"
 )
 
 // WatchLayerNames are the display names of the watched layers.
@@ -88,7 +88,7 @@ func WatchCauseLabel(c interpret.WatchCause, wifi bool) string {
 // WatchSummary renders a finished watch as plain text for the clipboard.
 func WatchSummary(a interpret.WatchAnalysis, wifi bool) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "helpnet watch · %s · %s\n\n", a.Start.Local().Format("2006-01-02 15:04"), interpret.FormatWatchDuration(a.End.Sub(a.Start)+a.Tick))
+	fmt.Fprintf(&b, "nethelp watch · %s · %s\n\n", a.Start.Local().Format("2006-01-02 15:04"), interpret.FormatWatchDuration(a.End.Sub(a.Start)+a.Tick))
 	fmt.Fprintf(&b, "%s\n", a.Conclusion)
 	if a.Suggestion != "" {
 		fmt.Fprintf(&b, "%s\n", a.Suggestion)

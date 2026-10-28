@@ -9,10 +9,10 @@ import (
 
 	"github.com/mattn/go-runewidth"
 
-	"github.com/samcjohns/helpnet/internal/checks"
-	"github.com/samcjohns/helpnet/internal/interpret"
-	"github.com/samcjohns/helpnet/internal/report"
-	"github.com/samcjohns/helpnet/internal/session"
+	"github.com/samcjohns/nethelp/internal/checks"
+	"github.com/samcjohns/nethelp/internal/interpret"
+	"github.com/samcjohns/nethelp/internal/report"
+	"github.com/samcjohns/nethelp/internal/session"
 )
 
 // runPlain streams line-based output: one line per finished check, findings
@@ -21,7 +21,7 @@ import (
 // by its details and raw tool output.
 func runPlain(ctx context.Context, p session.Params, w io.Writer, tty, verbose bool) *report.Report {
 	c := report.Colors{Enabled: tty && os.Getenv("NO_COLOR") == ""}
-	fmt.Fprintf(w, "%s %s %s\n\n", c.Bold("helpnet"), c.Dim(version), c.Dim("· target "+p.Opts.Target))
+	fmt.Fprintf(w, "%s %s %s\n\n", c.Bold("nethelp"), c.Dim(version), c.Dim("· target "+p.Opts.Target))
 
 	titleWidth := 0
 	for _, id := range checks.Order {

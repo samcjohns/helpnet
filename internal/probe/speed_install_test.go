@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -76,7 +77,8 @@ func TestDownloadSpeedTool(t *testing.T) {
 	if err != nil || !strings.Contains(string(b), "echo hi") {
 		t.Fatalf("installed file: %q, %v", b, err)
 	}
-	if fi, _ := os.Stat(p); fi.Mode().Perm()&0o100 == 0 {
+	// Windows has no executable bit; the .exe name is what makes it runnable.
+	if fi, _ := os.Stat(p); runtime.GOOS != "windows" && fi.Mode().Perm()&0o100 == 0 {
 		t.Errorf("not executable: %v", fi.Mode())
 	}
 	if entries, _ := os.ReadDir(dir); len(entries) != 1 {

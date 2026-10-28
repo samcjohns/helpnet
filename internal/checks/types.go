@@ -4,8 +4,8 @@
 package checks
 
 import (
-	"github.com/samcjohns/helpnet/internal/probe"
-	"github.com/samcjohns/helpnet/internal/sysinfo"
+	"github.com/samcjohns/nethelp/internal/probe"
+	"github.com/samcjohns/nethelp/internal/sysinfo"
 )
 
 // ID names a check. Checks run in Order, nearest to farthest.

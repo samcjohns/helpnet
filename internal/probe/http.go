@@ -170,7 +170,7 @@ func timeHop(ctx context.Context, rawURL string, opt HTTPOptions) (HTTPSample, s
 	if err != nil {
 		return s, "", err
 	}
-	req.Header.Set("User-Agent", "helpnet (network diagnostics)")
+	req.Header.Set("User-Agent", "nethelp (network diagnostics)")
 	resp, err := tr.RoundTrip(req)
 	if err != nil {
 		mu.Lock()
