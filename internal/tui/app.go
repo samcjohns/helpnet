@@ -23,6 +23,7 @@ import (
 	"github.com/samcjohns/helpnet/internal/probe"
 	"github.com/samcjohns/helpnet/internal/report"
 	"github.com/samcjohns/helpnet/internal/session"
+	"github.com/samcjohns/helpnet/internal/watch"
 )
 
 // Options configures the TUI.
@@ -75,6 +76,22 @@ type model struct {
 	speedTool     bool // librespeed-cli is available
 	installing    bool
 	installCancel context.CancelFunc
+
+	// /watch state.
+	watchID       int
+	watching      bool
+	watchStopped  bool // ended early with esc or /watch stop
+	watchCancel   context.CancelFunc
+	watchCh       <-chan watch.Sample
+	watchOpts     watch.Options
+	watchDur      time.Duration
+	watchStart    time.Time
+	watchWiFi     bool
+	watchSamples  []watch.Sample
+	watchNotes    []string
+	watchAnalysis interpret.WatchAnalysis
+	showWatch     bool               // the pane shows the watch instead of the blocks
+	watchReturn   int                // main pane scroll offset to restore on leaving the watch
 	everPlans     map[checks.ID]bool // checks requested at least once this session
 
 	// UI state.
@@ -214,6 +231,9 @@ func (m *model) shutdown() {
 	if m.installCancel != nil {
 		m.installCancel()
 	}
+	if m.watchCancel != nil {
+		m.watchCancel()
+	}
 	if m.ch == nil || !m.active {
 		return
 	}
@@ -252,8 +272,11 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 	case updateMsg:
 		return m.handleUpdate(msg)
 
+	case watchMsg:
+		return m.handleWatch(msg)
+
 	case spinner.TickMsg:
-		if !m.active {
+		if !m.active && !m.watching {
 			return nil
 		}
 		var cmd tea.Cmd
@@ -332,7 +355,7 @@ func (m *model) handleUpdate(msg updateMsg) tea.Cmd {
 				cmd = m.flash("Report saved to " + m.opts.ExportPath)
 			}
 		}
-		if m.follow && !m.showRoute {
+		if m.follow && !m.showRoute && !m.showWatch {
 			m.refresh()
 			m.vp.SetYOffset(m.summaryAt)
 		}
@@ -347,6 +370,9 @@ func (m *model) quit() tea.Cmd {
 	}
 	if m.installCancel != nil {
 		m.installCancel()
+	}
+	if m.watchCancel != nil {
+		m.watchCancel()
 	}
 	return tea.Quit
 }
@@ -368,6 +394,11 @@ func (m *model) visibleIDs() []checks.ID {
 
 func (m *model) handleKey(msg tea.KeyMsg) tea.Cmd {
 	ids := m.visibleIDs()
+	if m.showWatch {
+		if cmd, done := m.handleWatchKey(msg); done {
+			return cmd
+		}
+	}
 	if m.showRoute {
 		switch msg.String() {
 		case "esc", "m":
@@ -424,6 +455,8 @@ func (m *model) handleKey(msg tea.KeyMsg) tea.Cmd {
 		return m.copySummary()
 	case "m":
 		m.openRoute()
+	case "w":
+		m.openWatch()
 	case "?":
 		m.showHelp = true
 	case "pgup", "b":
@@ -555,6 +588,15 @@ func (m *model) exec(line string) tea.Cmd {
 	}
 	busy := func() tea.Cmd { return m.flash("A run is in progress — wait for it, or use /run to restart") }
 	switch name {
+	case "/run", "/quick", "/target", "/speed", "/trace", "/route", "/dns":
+		// Checks running alongside a watch would show up in it as spikes.
+		if m.watching {
+			return m.flash("Watching — press esc or /watch stop to end it first")
+		}
+	}
+	switch name {
+	case "/watch":
+		return m.startWatch(arg)
 	case "/run":
 		return m.start(m.base.Plan, true, m.base.Opts)
 	case "/quick":
@@ -676,15 +718,19 @@ func (m *model) copySummary() tea.Cmd {
 	if m.report == nil {
 		return m.flash("No summary yet — the run is still in progress")
 	}
-	text := report.SummaryText(*m.report, report.Colors{})
+	return m.copyText(report.SummaryText(*m.report, report.Colors{}), "Summary")
+}
+
+// copyText puts text on the clipboard; what names it in the toast.
+func (m *model) copyText(text, what string) tea.Cmd {
 	if err := clipboard.WriteAll(text); err != nil {
 		// No system clipboard tool (e.g. over SSH): ask the terminal via OSC 52.
 		if _, err := osc52.New(text).WriteTo(os.Stderr); err != nil {
 			return m.flash("Couldn't copy: " + err.Error())
 		}
-		return m.flash("Summary sent to the terminal clipboard (OSC 52)")
+		return m.flash(what + " sent to the terminal clipboard (OSC 52)")
 	}
-	return m.flash("Summary copied to clipboard")
+	return m.flash(what + " copied to clipboard")
 }
 
 func (m *model) flash(s string) tea.Cmd {

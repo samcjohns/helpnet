@@ -45,8 +45,11 @@ func (m *model) refresh() {
 	w := m.contentWidth()
 	var lines []string
 	add := func(s ...string) { lines = append(lines, s...) }
-	if m.showRoute {
+	if m.showRoute || m.showWatch {
 		lines = m.routeLines(w)
+		if m.showWatch {
+			lines = m.watchLines(w)
+		}
 		pad := strings.Repeat(" ", gutter)
 		for i, l := range lines {
 			lines[i] = pad + ansi.Truncate(l, w, "…")

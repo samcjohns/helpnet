@@ -107,6 +107,7 @@ While the TUI runs, it sets the terminal tab title to the check in progress (`he
 | `/` | Focus the command bar |
 | `s` | Jump to the final summary |
 | `m` | Show the route map of the last trace (`esc` to go back) |
+| `w` | Show the last `/watch` (`esc` stops a running watch) |
 | `c` | Copy the summary to the clipboard (falls back to OSC 52 over SSH) |
 | `?` | Help overlay |
 | `q` / `ctrl+c` | Quit (stops all probes and subprocesses immediately) |
@@ -124,6 +125,7 @@ As you type in the command bar, a popup suggests matching commands. Use `tab` to
 | `/speed -install` | Install `librespeed-cli` (Homebrew on macOS, otherwise the verified GitHub release into `~/.local/bin`; no sudo) |
 | `/trace [host]` | Run the per-hop route trace |
 | `/route [host]` | Trace the route and show it as a map, with a guess for what each hop is (your router, ISP, backbone carrier, destination network) |
+| `/watch [seconds]` | Watch for problems that come and go (default 600 s; `10m` or `1h` also work; `/watch stop` ends it early). See [Watch mode](#watch-mode) |
 | `/dns [domain]` | Run the DNS comparison on a specific domain |
 | `/export [path]` | Save the report (Markdown by default; `.json` → JSON) |
 | `/verbose` | Toggle details and raw tool output for all blocks (shows stored results; nothing is re-run) |
@@ -146,6 +148,23 @@ Checks run from nearest to farthest, so the first failing layer points at the pr
 | 7 | **Tailscale** | Only when the `tailscale` CLI is installed. Reads `tailscale status` (how many active peers connect directly, via a DERP relay or via a peer relay) and `tailscale netcheck` (UDP, IPv4/IPv6, whether the NAT is "hard", i.e. maps each destination to a different port, UPnP/NAT-PMP/PCP and the home DERP region and its latency). `netcheck` sends its own probes to Tailscale's DERP servers. Runs in quick mode too, since it takes well under a second. Not scored |
 
 The default workflow (layers 0–5, plus 7 when Tailscale is installed) usually finishes in under 10 seconds.
+
+## Watch mode
+
+A normal run takes a few seconds, and an intermittent problem can easily miss it. `/watch [seconds]` probes three layers once a second, in parallel:
+
+- **Gateway:** one ping to your router.
+- **Internet:** one ping to each internet host. This layer counts as lost only when *none* answered.
+- **DNS:** one lookup of a random name such as `hn-1a2b3c4d.google.com` through the system resolver. The random label gets past every cache, so each lookup really reaches your DNS server. The answer is NXDOMAIN, which counts as working DNS.
+
+A probe that gets no answer within the tick (0.9 s) counts as **lost**. One that answers above the layer's fail threshold counts as **slow**. Lost or slow probes in a row become an event, and a single good answer in the middle doesn't split it. Events on different layers that overlap become one incident. Each incident is blamed on the lowest layer that failed:
+
+- **Gateway and the layers behind it** → local Wi-Fi, or your local network or router when you're on Ethernet.
+- **Internet, gateway fine** → your ISP or the wider internet.
+- **DNS only** → your DNS resolver.
+- **Only pings to the router itself** while traffic through it stayed clean → the router deprioritising pings. It's listed as harmless and not counted.
+
+If a target never answers pings, helpnet switches it to TCP probes (gateway ports 80/443/53, internet port 443) and notes the switch. The pane shows a strip per layer and the verdict so far, for example *"3 drops in 10 min, all at the gateway, so it's local Wi-Fi."*, followed by a timestamped timeline of each incident. `esc` stops early and keeps the result, and `c` copies it as text. Other checks are blocked while a watch runs, because their traffic would show up as spikes.
 
 ## How results are interpreted
 
@@ -212,6 +231,7 @@ cmd/helpnet/         CLI entry point, flag parsing, plain/JSON output
 internal/checks/     the layered workflow; each check emits typed events and results
 internal/probe/      ping, TCP, DNS, HTTP timing, traceroute/Trippy, LibreSpeed, Tailscale (+ parsers)
 internal/sysinfo/    interface, gateway, VPN, proxy, Wi-Fi detection (per-OS build tags)
+internal/watch/      /watch sampler: probes gateway, internet and DNS every second
 internal/interpret/  pure rules engine, primary diagnosis, scoring
 internal/report/     summary model; Markdown, JSON and text renderers
 internal/session/    runs checks and streams results + findings to any frontend

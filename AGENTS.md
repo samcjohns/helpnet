@@ -41,6 +41,7 @@ Go module: `github.com/samcjohns/helpnet`. Go version comes from `go.mod`. No cg
 9. **Tailscale is layer 7 and only planned when its CLI is installed** (`checks.WithInstalled`). Without it, the check is left out of the plan, the TUI and the report rather than shown as skipped. It is not scored. It comes after bandwidth so the spec's layer numbers 0–6 stay put.
 10. **CGNAT is detected locally, without STUN.** The signals are this device's address or gateway in 100.64.0.0/10, or a trace hop in that range before any public hop. Tailnet addresses use the same range, so trace-based detection is off when a VPN carries the default route (`findTraceNAT`, `localCGNAT`). Double NAT needs a private hop 2 within 2 ms of hop 1; a farther private hop is usually the ISP's own router.
 11. **Ping interval is 200 ms** (the unprivileged minimum), so 10 samples take about 2 s per host and the full run stays well under 30 s.
+12. **Watch mode (`/watch`) is outside the check pipeline.** `internal/watch` samples once a second, and `interpret.AnalyzeWatch` (pure) turns the samples into events, incidents and a verdict. It applies rules 2 and 3 in its own form. An incident is blamed on the lowest layer that failed in it. A gateway-only incident while the internet stayed clean is `CauseRouter`: harmless and not counted. A spike means a probe above the layer's *fail* threshold, and a probe unanswered within 0.9 s counts as lost. The DNS probe looks up a random label so caches can't hide an outage; NXDOMAIN counts as success. The TUI blocks other checks while a watch runs, because their traffic would show up as spikes.
 
 ## Adding things
 
@@ -62,6 +63,7 @@ Go module: `github.com/samcjohns/helpnet`. Go version comes from `go.mod`. No cg
 | `go test ./internal/report -update` | Regenerate golden `report.md` / `report.json` |
 | `HELPNET_TUI_DEMO=1 go test ./internal/tui -run LiveDemo -v` | Drive the real TUI model against the network and print frames (`make demo`) |
 | `HELPNET_REPORT=/abs/path.json go test ./internal/report -run FileMatches` | Validate any real `--json` output against the schema |
+| `watch.Options.Probe` | Replace the per-layer measurement in watch mode; `tui/watch_test.go` feeds `watchMsg`s directly instead |
 | Fake tools on `PATH` | `checks/external_test.go` shows how to stand in for `trip` / `traceroute` / `librespeed-cli` with shell scripts |
 
 TUI tests drive the Bubble Tea model directly (`fixtureModel` feeds synthetic `updateMsg`s, then they assert on `View()`). They also check that every line fits the terminal width. To test the real binary in a terminal, run it under a pty that has a window size **and** answers the terminal's startup queries (`ESC]11;?` background colour and `ESC[6n` cursor position). Otherwise the first keypress is swallowed as the reply. Plain `script` gives a 0×0 pty and appears to hang.

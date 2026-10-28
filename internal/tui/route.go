@@ -19,10 +19,10 @@ const routeBarWidth = 12
 // openRoute switches the pane to the route map, remembering where the main
 // pane was scrolled to.
 func (m *model) openRoute() {
-	if !m.showRoute {
+	if !m.showRoute && !m.showWatch {
 		m.routeReturn = m.vp.YOffset
 	}
-	m.showRoute = true
+	m.showRoute, m.showWatch = true, false
 	m.refresh()
 	m.vp.GotoTop()
 }
