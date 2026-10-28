@@ -42,6 +42,12 @@ type updateMsg struct {
 
 type toastExpiredMsg struct{ id int }
 
+// speedInstallMsg reports the end of a /speed -install.
+type speedInstallMsg struct {
+	path string
+	err  error
+}
+
 type model struct {
 	opts  Options
 	base  session.Params // current target/config; Plan is the default full plan
@@ -51,38 +57,46 @@ type model struct {
 	ready         bool
 
 	// Run state.
-	runID     int
-	ch        <-chan session.Update
-	cancel    context.CancelFunc
-	active    bool
-	runPlan   []checks.ID
-	runStart  time.Time
-	runEnd    time.Time
-	results   *checks.Results
-	findings  []interpret.Finding
-	report    *report.Report
-	running   map[checks.ID]bool
-	progress  map[checks.ID]string
-	exported  bool
-	everPlans map[checks.ID]bool // checks requested at least once this session
+	runID    int
+	ch       <-chan session.Update
+	cancel   context.CancelFunc
+	active   bool
+	runPlan  []checks.ID
+	runStart time.Time
+	runEnd   time.Time
+	results  *checks.Results
+	findings []interpret.Finding
+	report   *report.Report
+	running  map[checks.ID]bool
+	progress map[checks.ID]string
+	exported bool
+
+	// /speed -install state.
+	speedTool     bool // librespeed-cli is available
+	installing    bool
+	installCancel context.CancelFunc
+	everPlans     map[checks.ID]bool // checks requested at least once this session
 
 	// UI state.
-	selected   int
-	expanded   map[checks.ID]bool
-	showRaw    bool
-	showHelp   bool
-	follow     bool // auto-scroll to the summary when a run completes
-	vp         viewport.Model
-	input      textinput.Model
-	sugg       []command
-	suggIdx    int
-	spin       spinner.Model
-	toast      string
-	toastID    int
-	tools      string
-	blockLines map[checks.ID][2]int // first/last content line of each block
-	summaryAt  int
-	title      string // last terminal title sent
+	selected    int
+	expanded    map[checks.ID]bool
+	showRaw     bool
+	showHelp    bool
+	showRoute   bool   // the pane shows the route map instead of the blocks
+	routeHost   string // destination of the last /route
+	routeReturn int    // main pane scroll offset to restore on leaving the map
+	follow      bool   // auto-scroll to the summary when a run completes
+	vp          viewport.Model
+	input       textinput.Model
+	sugg        []command
+	suggIdx     int
+	spin        spinner.Model
+	toast       string
+	toastID     int
+	tools       string
+	blockLines  map[checks.ID][2]int // first/last content line of each block
+	summaryAt   int
+	title       string // last terminal title sent
 }
 
 // Run starts the TUI, runs the workflow, and returns the latest report when
@@ -122,6 +136,7 @@ func newModel(o Options) *model {
 		input:     in,
 		spin:      sp,
 		tools:     detectTools(),
+		speedTool: probe.SpeedToolAvailable(),
 	}
 	m.input.PlaceholderStyle = m.theme.dim
 	m.input.TextStyle = m.theme.fg(m.theme.text)
@@ -141,7 +156,11 @@ func detectTools() string {
 	if os.PathSeparator == '\\' {
 		trace = "tracert"
 	}
-	return strings.Join([]string{mark("trip"), mark(trace), mark("librespeed-cli")}, " · ")
+	speed := "librespeed-cli ✗"
+	if probe.SpeedToolAvailable() {
+		speed = "librespeed-cli ✓"
+	}
+	return strings.Join([]string{mark("trip"), mark(trace), speed}, " · ")
 }
 
 func (m *model) Init() tea.Cmd {
@@ -192,6 +211,9 @@ func (m *model) shutdown() {
 	if m.cancel != nil {
 		m.cancel()
 	}
+	if m.installCancel != nil {
+		m.installCancel()
+	}
 	if m.ch == nil || !m.active {
 		return
 	}
@@ -237,6 +259,9 @@ func (m *model) update(msg tea.Msg) tea.Cmd {
 		var cmd tea.Cmd
 		m.spin, cmd = m.spin.Update(msg)
 		return cmd
+
+	case speedInstallMsg:
+		return m.speedInstalled(msg)
 
 	case toastExpiredMsg:
 		if msg.id == m.toastID {
@@ -307,7 +332,7 @@ func (m *model) handleUpdate(msg updateMsg) tea.Cmd {
 				cmd = m.flash("Report saved to " + m.opts.ExportPath)
 			}
 		}
-		if m.follow {
+		if m.follow && !m.showRoute {
 			m.refresh()
 			m.vp.SetYOffset(m.summaryAt)
 		}
@@ -319,6 +344,9 @@ func (m *model) handleUpdate(msg updateMsg) tea.Cmd {
 func (m *model) quit() tea.Cmd {
 	if m.cancel != nil {
 		m.cancel()
+	}
+	if m.installCancel != nil {
+		m.installCancel()
 	}
 	return tea.Quit
 }
@@ -340,6 +368,23 @@ func (m *model) visibleIDs() []checks.ID {
 
 func (m *model) handleKey(msg tea.KeyMsg) tea.Cmd {
 	ids := m.visibleIDs()
+	if m.showRoute {
+		switch msg.String() {
+		case "esc", "m":
+			m.closeRoute()
+			return nil
+		case "up", "k":
+			m.vp.ScrollUp(1)
+			return nil
+		case "down", "j":
+			m.vp.ScrollDown(1)
+			return nil
+		case "R":
+			return m.route(m.routeHost)
+		case "enter", " ", "s":
+			return nil
+		}
+	}
 	switch msg.String() {
 	case "q":
 		return m.quit()
@@ -377,6 +422,8 @@ func (m *model) handleKey(msg tea.KeyMsg) tea.Cmd {
 		m.vp.SetYOffset(m.summaryAt)
 	case "c":
 		return m.copySummary()
+	case "m":
+		m.openRoute()
 	case "?":
 		m.showHelp = true
 	case "pgup", "b":
@@ -393,6 +440,23 @@ func (m *model) handleKey(msg tea.KeyMsg) tea.Cmd {
 		m.toast = ""
 	}
 	return nil
+}
+
+// route traces the route to host (default: the target host) and shows it as
+// a map.
+func (m *model) route(host string) tea.Cmd {
+	if m.active {
+		return m.flash("A run is in progress — wait for it, or press r to restart")
+	}
+	opts := m.base.Opts
+	opts.TraceHost = host
+	m.routeHost = host
+	if host == "" {
+		m.routeHost = opts.TargetHost()
+	}
+	cmd := m.start([]checks.ID{checks.Trace}, false, opts)
+	m.openRoute()
+	return cmd
 }
 
 // rerun re-measures one check, keeping everything else.
@@ -505,8 +569,18 @@ func (m *model) exec(line string) tea.Cmd {
 		m.base.Opts.Target = checks.NormalizeTarget(arg)
 		return m.start([]checks.ID{checks.HTTP, checks.Trace}, false, m.base.Opts)
 	case "/speed":
+		switch arg {
+		case "":
+		case "-install", "--install", "install":
+			return m.installSpeed()
+		default:
+			return m.flash("Usage: /speed [-install]")
+		}
 		if m.active {
 			return busy()
+		}
+		if m.installing {
+			return m.flash("librespeed-cli is still being installed — try again when it's done")
 		}
 		return m.start([]checks.ID{checks.Speed}, false, m.base.Opts)
 	case "/trace":
@@ -516,6 +590,11 @@ func (m *model) exec(line string) tea.Cmd {
 		opts := m.base.Opts
 		opts.TraceHost = arg
 		return m.start([]checks.ID{checks.Trace}, false, opts)
+	case "/route":
+		if m.active {
+			return busy()
+		}
+		return m.route(arg)
 	case "/dns":
 		if m.active {
 			return busy()
@@ -539,6 +618,36 @@ func (m *model) exec(line string) tea.Cmd {
 		return m.flash(fmt.Sprintf("Unknown command %s — type /help for commands", name))
 	}
 	return nil
+}
+
+// installSpeed installs librespeed-cli in the background.
+func (m *model) installSpeed() tea.Cmd {
+	if m.installing {
+		return m.flash("librespeed-cli is already being installed")
+	}
+	if probe.SpeedToolAvailable() {
+		return m.flash("librespeed-cli is already installed — /speed to run")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	m.installing, m.installCancel = true, cancel
+	install := func() tea.Msg {
+		p, err := probe.InstallSpeedTool(ctx)
+		return speedInstallMsg{path: p, err: err}
+	}
+	return tea.Batch(install, m.flash("Installing librespeed-cli…"))
+}
+
+func (m *model) speedInstalled(msg speedInstallMsg) tea.Cmd {
+	m.installing = false
+	if m.installCancel != nil {
+		m.installCancel()
+		m.installCancel = nil
+	}
+	if msg.err != nil {
+		return m.flash("Install failed: " + msg.err.Error())
+	}
+	m.tools, m.speedTool = detectTools(), true
+	return m.flash("librespeed-cli installed to " + msg.path + " — /speed to run")
 }
 
 // currentReport returns the last completed report, or builds one from the

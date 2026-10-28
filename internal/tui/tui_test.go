@@ -72,6 +72,7 @@ func fixtureModelPlan(t *testing.T, r *checks.Results, plan []checks.ID) *model 
 	p := baseParams()
 	p.Plan = plan
 	m := newModel(Options{Params: p, Version: "0.1.0"})
+	m.speedTool = true // don't depend on what this machine has installed
 	m.Update(tea.WindowSizeMsg{Width: termW, Height: termH})
 	m.runID, m.active, m.runPlan, m.runStart = 1, true, plan, time.Now()
 	th := config.DefaultThresholds()
@@ -250,6 +251,41 @@ func TestCommandsWithoutNetwork(t *testing.T) {
 	}
 }
 
+func TestSpeedInstall(t *testing.T) {
+	m := fixtureModel(t, fixtures.Healthy())
+	m.speedTool = false
+	m.refresh()
+	m.vp.GotoTop()
+	if v := m.View(); !strings.Contains(v, "optional · /speed -install to set up") {
+		t.Errorf("missing install hint under Bandwidth:\n%s", v)
+	}
+	if m.exec("/speed -bogus"); !strings.Contains(m.toast, "Usage: /speed [-install]") {
+		t.Errorf("bad flag toast %q", m.toast)
+	}
+	// Pretend an install is underway rather than downloading for real.
+	m.installing = true
+	m.refresh()
+	if v := m.View(); !strings.Contains(v, "installing librespeed-cli…") {
+		t.Errorf("missing installing state:\n%s", v)
+	}
+	if m.exec("/speed"); !strings.Contains(m.toast, "still being installed") {
+		t.Errorf("/speed during install toast %q", m.toast)
+	}
+	m.Update(speedInstallMsg{err: fmt.Errorf("HTTP 404")})
+	if m.installing || !strings.Contains(m.toast, "Install failed: HTTP 404") {
+		t.Errorf("failed install: installing=%v toast %q", m.installing, m.toast)
+	}
+	m.installing = true
+	m.Update(speedInstallMsg{path: "/home/u/.local/bin/librespeed-cli"})
+	if m.installing || !m.speedTool || !strings.Contains(m.toast, "installed to /home/u/.local/bin/librespeed-cli") {
+		t.Errorf("finished install: speedTool=%v toast %q", m.speedTool, m.toast)
+	}
+	m.vp.GotoTop()
+	if v := m.View(); !strings.Contains(v, "optional · /speed to run") {
+		t.Errorf("hint should go back to /speed after install:\n%s", v)
+	}
+}
+
 func TestHelpOverlayAndQuit(t *testing.T) {
 	m := fixtureModel(t, fixtures.Healthy())
 	m.Update(key("?"))
@@ -379,4 +415,37 @@ func TestTailscaleRowOnlyWhenPlanned(t *testing.T) {
 		t.Errorf("Tailscale row missing:\n%s", ansi.Strip(v))
 	}
 	assertFits(t, v)
+}
+
+func TestRouteMapView(t *testing.T) {
+	m := fixtureModel(t, fixtures.Healthy())
+	m.vp.SetYOffset(3)
+	m.Update(key("m"))
+	if !m.showRoute {
+		t.Fatal("m should open the route map")
+	}
+	v := m.View()
+	assertFits(t, v)
+	for _, want := range []string{"Route to example.com", "This device", "Your router", "ISP network", "Destination", "Reached example.com in 4 hops"} {
+		if !strings.Contains(v, want) {
+			t.Errorf("route map missing %q:\n%s", want, v)
+		}
+	}
+	m.Update(tea.WindowSizeMsg{Width: 60, Height: 20})
+	for _, l := range strings.Split(m.View(), "\n") {
+		if lipgloss.Width(l) > 60 {
+			t.Errorf("route line too wide for 60 columns: %q", ansi.Strip(l))
+		}
+	}
+	m.Update(tea.WindowSizeMsg{Width: termW, Height: termH})
+	m.Update(key("esc"))
+	if m.showRoute || m.vp.YOffset != 3 {
+		t.Errorf("esc should close the map and restore scroll, showRoute=%v offset=%d", m.showRoute, m.vp.YOffset)
+	}
+	// While the trace runs, the map shows its progress line.
+	m.running[checks.Trace], m.progress[checks.Trace] = true, "tracing route to example.com with traceroute…"
+	m.Update(key("m"))
+	if v := m.View(); !strings.Contains(v, "tracing route to example.com") || !strings.Contains(v, "map appears when") {
+		t.Errorf("running route view:\n%s", v)
+	}
 }

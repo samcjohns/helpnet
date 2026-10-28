@@ -61,7 +61,7 @@ helpnet works without these. When one is missing, its block shows as skipped alo
 |---|---|---|
 | [Trippy](https://trippy.rs) (`trip`) | Per-hop route trace (preferred) | `brew install trippy` · `cargo install trippy` · `winget install trippy` |
 | `traceroute` / `tracert` | Route trace fallback | Ships with macOS and Windows; `apt install traceroute` on Linux |
-| [`librespeed-cli`](https://github.com/librespeed/speedtest-cli) | Bandwidth test (`--speed`, `/speed`) | `brew install librespeed-cli` or a release binary |
+| [`librespeed-cli`](https://github.com/librespeed/speedtest-cli) | Bandwidth test (`--speed`, `/speed`) | `/speed -install` in the TUI, `brew install librespeed-cli`, or a release binary |
 | [Tailscale](https://tailscale.com) (`tailscale`) | Tailscale check (layer 7) | Not needed otherwise: without it the check is left out entirely rather than shown as skipped |
 
 These tools only ever run as separate processes. helpnet never bundles or redistributes them.
@@ -106,6 +106,7 @@ While the TUI runs, it sets the terminal tab title to the check in progress (`he
 | `R` | Re-run only the selected check |
 | `/` | Focus the command bar |
 | `s` | Jump to the final summary |
+| `m` | Show the route map of the last trace (`esc` to go back) |
 | `c` | Copy the summary to the clipboard (falls back to OSC 52 over SSH) |
 | `?` | Help overlay |
 | `q` / `ctrl+c` | Quit (stops all probes and subprocesses immediately) |
@@ -120,7 +121,9 @@ As you type in the command bar, a popup suggests matching commands. Use `tab` to
 | `/quick` | Run only the fast checks |
 | `/target <url>` | Change the HTTP target and re-run HTTP and trace |
 | `/speed` | Run the bandwidth test now |
+| `/speed -install` | Install `librespeed-cli` (Homebrew on macOS, otherwise the verified GitHub release into `~/.local/bin`; no sudo) |
 | `/trace [host]` | Run the per-hop route trace |
+| `/route [host]` | Trace the route and show it as a map, with a guess for what each hop is (your router, ISP, backbone carrier, destination network) |
 | `/dns [domain]` | Run the DNS comparison on a specific domain |
 | `/export [path]` | Save the report (Markdown by default; `.json` → JSON) |
 | `/verbose` | Toggle details and raw tool output for all blocks (shows stored results; nothing is re-run) |

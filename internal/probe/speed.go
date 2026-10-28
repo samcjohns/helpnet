@@ -20,28 +20,30 @@ type SpeedResult struct {
 	Raw          string  `json:"raw,omitempty"`
 }
 
-// SpeedToolAvailable reports whether librespeed-cli is on PATH.
-func SpeedToolAvailable() bool { return LookPath("librespeed-cli") != "" }
+// SpeedToolAvailable reports whether librespeed-cli is on PATH or was
+// installed by InstallSpeedTool.
+func SpeedToolAvailable() bool { return speedToolPath() != "" }
 
 // SpeedInstallHint explains how to install librespeed-cli.
 func SpeedInstallHint() string {
 	switch runtime.GOOS {
 	case "darwin":
-		return "install librespeed-cli (brew install librespeed-cli)"
+		return "run /speed -install in helpnet, or brew install librespeed-cli"
 	default:
-		return "install librespeed-cli from https://github.com/librespeed/speedtest-cli/releases"
+		return "run /speed -install in helpnet, or get librespeed-cli from https://github.com/librespeed/speedtest-cli/releases"
 	}
 }
 
 // SpeedTest runs librespeed-cli and parses its JSON report.
 func SpeedTest(ctx context.Context) (SpeedResult, error) {
 	res := SpeedResult{Tool: "librespeed-cli"}
-	if !SpeedToolAvailable() {
+	bin := speedToolPath()
+	if bin == "" {
 		return res, fmt.Errorf("librespeed-cli not found; %s", SpeedInstallHint())
 	}
 	cctx, cancel := context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
-	out, err := RunCommand(cctx, "librespeed-cli", "--json")
+	out, err := RunCommand(cctx, bin, "--json")
 	res.Raw = out
 	if err != nil {
 		return res, fmt.Errorf("librespeed-cli: %v", firstLine(out, err))

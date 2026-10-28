@@ -45,6 +45,15 @@ func (m *model) refresh() {
 	w := m.contentWidth()
 	var lines []string
 	add := func(s ...string) { lines = append(lines, s...) }
+	if m.showRoute {
+		lines = m.routeLines(w)
+		pad := strings.Repeat(" ", gutter)
+		for i, l := range lines {
+			lines[i] = pad + ansi.Truncate(l, w, "…")
+		}
+		m.vp.SetContent(strings.Join(lines, "\n"))
+		return
+	}
 	m.blockLines = map[checks.ID][2]int{}
 
 	for i, id := range m.visibleIDs() {
@@ -175,6 +184,10 @@ func (m *model) pendingText(id checks.ID) string {
 	switch {
 	case inPlan && m.active:
 		return "pending"
+	case id == checks.Speed && m.installing:
+		return "installing librespeed-cli…"
+	case id == checks.Speed && !m.speedTool:
+		return "optional · /speed -install to set up"
 	case id == checks.Speed:
 		return "optional · /speed to run"
 	case id == checks.Trace:
