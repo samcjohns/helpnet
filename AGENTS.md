@@ -47,6 +47,8 @@ Go module: `github.com/samcjohns/nethelp`. Go version comes from `go.mod`. No cg
 
 **A new interpretation rule:** add a `Rule…` constant and logic in `internal/interpret/rules.go`, then a test in `rules_test.go` using `internal/fixtures` (start from `fixtures.Healthy()` and break one thing). Check that the expected primary diagnosis still holds for the existing tests. If report output changes, run `make snapshots` and review the diff of `internal/report/testdata/`.
 
+**A new `/explain` scenario:** add a case to `interpret.Explain` (`internal/interpret/explain.go`) keyed on an existing finding's rule, and name it in `ExplainTopics`. Only add scenarios whose fix follows directly from the measurements; skip the explanation when the fix isn't clearly right (the DNS ones stay quiet behind a VPN or a filtering resolver). Test it in `explain_test.go`.
+
 **A new check/layer:** add an ID in `checks/types.go` (`Order`, `Title`) and a typed result field on `Results` (plus `set`). Register it in `checks/runner.go`, then add `report.Line`, `report.Details` and (if relevant) `Statistics` and the score weight. Extend `docs/report-schema.json`; `TestReportsMatchSchema` will fail until the schema matches. Add an entry to `tui.pendingText` if it is optional.
 
 **A new config key:** add it to `config.Config` with a default in `Default()`, and add it to `docs/config.example.toml`. `TestExampleConfigMatchesDefaults` enforces that the two match.

@@ -449,3 +449,57 @@ func TestRouteMapView(t *testing.T) {
 		t.Errorf("running route view:\n%s", v)
 	}
 }
+
+func TestExplainView(t *testing.T) {
+	r := fixtures.Healthy()
+	r.DNS.Resolvers[0] = fixtures.Resolver("192.168.1.1", true, 180)
+	r.DNS.Resolvers[1] = fixtures.Resolver("1.1.1.1", false, 15)
+	m := fixtureModel(t, r)
+	m.follow = false
+	m.vp.SetYOffset(3)
+	typeText(m, "/expl")
+	m.Update(key("enter"))
+	if !m.showExplain {
+		t.Fatal("/explain should open the explanation pane")
+	}
+	m.Update(tea.WindowSizeMsg{Width: termW, Height: 60}) // room for the whole explanation
+	v := ansi.Strip(m.View())
+	for _, want := range []string{"Explain", "DNS lookups are slow", "Your router (192.168.1.1)", "answered in 180 ms", "12× slower", "Fix: Change your DNS server to Cloudflare's DNS: 1.1.1.1", "1. ", "esc back"} {
+		if !strings.Contains(v, want) {
+			t.Errorf("explain view missing %q:\n%s", want, v)
+		}
+	}
+	m.Update(tea.WindowSizeMsg{Width: 60, Height: 20})
+	for _, l := range strings.Split(m.View(), "\n") {
+		if lipgloss.Width(l) > 60 {
+			t.Errorf("explain line too wide for 60 columns: %q", ansi.Strip(l))
+		}
+	}
+	m.Update(tea.WindowSizeMsg{Width: termW, Height: termH})
+	assertFits(t, m.View())
+	if txt := explainText(m.explanations()); !strings.Contains(txt, "Fix: Change your DNS server") || !strings.Contains(txt, "  1. ") {
+		t.Errorf("copy text:\n%s", txt)
+	}
+	m.Update(key("esc"))
+	if m.showExplain || m.vp.YOffset != 3 {
+		t.Errorf("esc should close /explain and restore scroll, showExplain=%v offset=%d", m.showExplain, m.vp.YOffset)
+	}
+
+	// Switching to the route map and back out lands on the main pane.
+	m.exec("/explain")
+	m.Update(key("m"))
+	if m.showExplain || !m.showRoute {
+		t.Errorf("m should switch from /explain to the route map: explain=%v route=%v", m.showExplain, m.showRoute)
+	}
+	m.Update(key("esc"))
+	if m.showRoute || m.vp.YOffset != 3 {
+		t.Errorf("leaving the map should restore the main pane, offset=%d", m.vp.YOffset)
+	}
+
+	// A healthy run says there is nothing to explain.
+	m = fixtureModel(t, fixtures.Healthy())
+	m.exec("/explain")
+	if v := ansi.Strip(m.View()); !strings.Contains(v, "Nothing here needs explaining") || !strings.Contains(v, "captive portal") {
+		t.Errorf("healthy explain view:\n%s", v)
+	}
+}

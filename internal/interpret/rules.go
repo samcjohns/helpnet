@@ -969,12 +969,20 @@ func (a *analysis) speedRules() {
 	}
 	ev := fmt.Sprintf("Download %.1f Mbps, upload %.1f Mbps (via %s).", s.DownloadMbps, s.UploadMbps, firstNonEmpty(s.Server, s.Tool))
 	sugg := "Check what speed your plan includes and whether other devices are using the connection; contact your ISP if it's well below your plan."
-	if l := a.r.Local; l != nil && l.WiFi != nil && l.WiFi.LinkRateMbps > 0 && l.WiFi.LinkRateMbps < 2*s.DownloadMbps+50 {
-		ev += fmt.Sprintf(" Your Wi-Fi link rate is only %.0f Mbps.", l.WiFi.LinkRateMbps)
+	if wifiLimitsSpeed(a.r) {
+		ev += fmt.Sprintf(" Your Wi-Fi link rate is only %.0f Mbps.", a.r.Local.WiFi.LinkRateMbps)
 		sugg = "Your Wi-Fi link is limiting speed. Move closer to the router, use the 5 GHz band, or use Ethernet."
 	}
 	a.add(Finding{Rule: RuleSlowDownload, Severity: sev, Layer: checks.Speed, Confidence: High,
 		Title: "Download speed is low", Evidence: ev, Suggestion: sugg})
+}
+
+// wifiLimitsSpeed reports whether the Wi-Fi link rate is low enough to
+// explain the measured download speed. Real throughput is roughly half the
+// link rate, so a link under about twice the download speed is the ceiling.
+func wifiLimitsSpeed(r *checks.Results) bool {
+	l, s := r.Local, r.Speed
+	return l != nil && s != nil && l.WiFi != nil && l.WiFi.LinkRateMbps > 0 && l.WiFi.LinkRateMbps < 2*s.DownloadMbps+50
 }
 
 // ---- NAT -------------------------------------------------------------------

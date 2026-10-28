@@ -126,10 +126,12 @@ func (m *model) openWatch() {
 	switch {
 	case m.showRoute:
 		m.watchReturn = m.routeReturn
+	case m.showExplain:
+		m.watchReturn = m.explainReturn
 	case !m.showWatch:
 		m.watchReturn = m.vp.YOffset
 	}
-	m.showRoute, m.showWatch = false, true
+	m.showRoute, m.showWatch, m.showExplain = false, true, false
 	m.refresh()
 	m.vp.GotoTop()
 }

@@ -16,6 +16,7 @@ var commands = []command{
 	{"/trace", "[host]", "Run the per-hop route trace"},
 	{"/route", "[host]", "Trace the route and show it as a map with guesses for each hop"},
 	{"/dns", "[domain]", "Run the DNS comparison on a specific domain"},
+	{"/explain", "", "Explain clear-cut problems in plain words, with the numbers and the fix"},
 	{"/watch", "[seconds]", "Probe gateway, internet and DNS every second (default 600) and log every drop"},
 	{"/export", "[path]", "Save the report (Markdown; .json extension → JSON)"},
 	{"/verbose", "", "Toggle details and raw output for all blocks"},

@@ -45,10 +45,14 @@ func (m *model) refresh() {
 	w := m.contentWidth()
 	var lines []string
 	add := func(s ...string) { lines = append(lines, s...) }
-	if m.showRoute || m.showWatch {
-		lines = m.routeLines(w)
-		if m.showWatch {
+	if m.showRoute || m.showWatch || m.showExplain {
+		switch {
+		case m.showWatch:
 			lines = m.watchLines(w)
+		case m.showExplain:
+			lines = m.explainLines(w)
+		default:
+			lines = m.routeLines(w)
 		}
 		pad := strings.Repeat(" ", gutter)
 		for i, l := range lines {
@@ -293,6 +297,10 @@ func (m *model) View() string {
 	var main string
 	if m.showHelp {
 		main = lipgloss.Place(m.width, m.vp.Height, lipgloss.Center, lipgloss.Center, m.helpView())
+		// Place doesn't clip: keep a tall overlay from pushing the input off screen.
+		if l := strings.Split(main, "\n"); len(l) > m.vp.Height {
+			main = strings.Join(l[:m.vp.Height], "\n")
+		}
 	} else {
 		main = m.vp.View()
 	}
@@ -398,5 +406,5 @@ func (m *model) helpView() string {
 		b.WriteString(t.accentS.Render(lipgloss.NewStyle().Width(18).Render(c.name+" "+c.args)) + t.fg(t.text).Render(c.desc) + "\n")
 	}
 	b.WriteString("\n" + t.dim.Render("Typing a URL in the command bar is the same as /target <url>.\nesc or ? to close"))
-	return t.borderFocus.Padding(1, 3).Render(b.String())
+	return t.borderFocus.Padding(0, 3).Render(b.String())
 }

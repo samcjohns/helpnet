@@ -95,25 +95,27 @@ type model struct {
 	everPlans     map[checks.ID]bool // checks requested at least once this session
 
 	// UI state.
-	selected    int
-	expanded    map[checks.ID]bool
-	showRaw     bool
-	showHelp    bool
-	showRoute   bool   // the pane shows the route map instead of the blocks
-	routeHost   string // destination of the last /route
-	routeReturn int    // main pane scroll offset to restore on leaving the map
-	follow      bool   // auto-scroll to the summary when a run completes
-	vp          viewport.Model
-	input       textinput.Model
-	sugg        []command
-	suggIdx     int
-	spin        spinner.Model
-	toast       string
-	toastID     int
-	tools       string
-	blockLines  map[checks.ID][2]int // first/last content line of each block
-	summaryAt   int
-	title       string // last terminal title sent
+	selected      int
+	expanded      map[checks.ID]bool
+	showRaw       bool
+	showHelp      bool
+	showRoute     bool   // the pane shows the route map instead of the blocks
+	routeHost     string // destination of the last /route
+	routeReturn   int    // main pane scroll offset to restore on leaving the map
+	showExplain   bool   // the pane shows /explain instead of the blocks
+	explainReturn int    // main pane scroll offset to restore on leaving /explain
+	follow        bool   // auto-scroll to the summary when a run completes
+	vp            viewport.Model
+	input         textinput.Model
+	sugg          []command
+	suggIdx       int
+	spin          spinner.Model
+	toast         string
+	toastID       int
+	tools         string
+	blockLines    map[checks.ID][2]int // first/last content line of each block
+	summaryAt     int
+	title         string // last terminal title sent
 }
 
 // Run starts the TUI, runs the workflow, and returns the latest report when
@@ -355,7 +357,7 @@ func (m *model) handleUpdate(msg updateMsg) tea.Cmd {
 				cmd = m.flash("Report saved to " + m.opts.ExportPath)
 			}
 		}
-		if m.follow && !m.showRoute && !m.showWatch {
+		if m.follow && !m.showRoute && !m.showWatch && !m.showExplain {
 			m.refresh()
 			m.vp.SetYOffset(m.summaryAt)
 		}
@@ -396,6 +398,11 @@ func (m *model) handleKey(msg tea.KeyMsg) tea.Cmd {
 	ids := m.visibleIDs()
 	if m.showWatch {
 		if cmd, done := m.handleWatchKey(msg); done {
+			return cmd
+		}
+	}
+	if m.showExplain {
+		if cmd, done := m.handleExplainKey(msg); done {
 			return cmd
 		}
 	}
@@ -597,6 +604,8 @@ func (m *model) exec(line string) tea.Cmd {
 	switch name {
 	case "/watch":
 		return m.startWatch(arg)
+	case "/explain":
+		m.openExplain()
 	case "/run":
 		return m.start(m.base.Plan, true, m.base.Opts)
 	case "/quick":

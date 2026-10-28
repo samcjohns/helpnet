@@ -125,6 +125,7 @@ As you type in the command bar, a popup suggests matching commands. Use `tab` to
 | `/speed -install` | Install `librespeed-cli` (Homebrew on macOS, otherwise the verified GitHub release into `~/.local/bin`; no sudo) |
 | `/trace [host]` | Run the per-hop route trace |
 | `/route [host]` | Trace the route and show it as a map, with a guess for what each hop is (your router, ISP, backbone carrier, destination network) |
+| `/explain` | Explain clear-cut problems in plain words, using this run's numbers, with the fix and how to apply it on your OS. Covers slow or unresponsive DNS (recommends the fastest public resolver measured), a captive portal, a weak Wi-Fi signal, and a Wi-Fi link that caps your download speed. `c` copies it |
 | `/watch [seconds]` | Watch for problems that come and go (default 600 s; `10m` or `1h` also work; `/watch stop` ends it early). See [Watch mode](#watch-mode) |
 | `/dns [domain]` | Run the DNS comparison on a specific domain |
 | `/export [path]` | Save the report (Markdown by default; `.json` → JSON) |
